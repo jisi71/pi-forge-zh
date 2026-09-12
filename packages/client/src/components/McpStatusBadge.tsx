@@ -1,5 +1,6 @@
 import { useMcpStore } from "../store/mcp-store";
 import { useUiStore } from "../store/ui-store";
+import { useT } from "../i18n";
 
 /**
  * Compact MCP connection-status indicator for the App header. Reads
@@ -19,6 +20,7 @@ import { useUiStore } from "../store/ui-store";
  *   - neutral: master kill-switch off
  */
 export function McpStatusBadge() {
+  const t = useT();
   const data = useMcpStore((s) => s.settings);
   const openSettings = useUiStore((s) => s.openSettings);
   if (data === undefined) return null;
@@ -33,10 +35,10 @@ export function McpStatusBadge() {
         ? "bg-red-500"
         : "bg-amber-400";
 
-  const label = !enabled ? "MCP off" : `MCP ${connected}/${total}`;
+  const label = !enabled ? t("app.mcpBadge.off") : t("app.mcpBadge.status", { connected, total });
   const title = !enabled
-    ? "MCP tools disabled. Click to open Settings → MCP."
-    : `${connected} of ${total} MCP server(s) connected. Click to open Settings → MCP.`;
+    ? t("app.mcpBadge.offTooltip")
+    : t.plural("app.mcpBadge.connectedTooltip", total, { connected, total });
 
   return (
     <button

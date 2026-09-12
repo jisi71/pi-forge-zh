@@ -1,5 +1,6 @@
 import { createSHA256 } from "hash-wasm";
 import { clearStoredToken, getStoredToken } from "../auth-client";
+import { t } from "../../i18n";
 import {
   ApiError,
   UNAUTHORIZED_EVENT,
@@ -1618,12 +1619,16 @@ async function request<T>(
     } else {
       code = "invalid_error_body";
     }
-    throw new ApiError(res.status, code, parsed.ok ? undefined : `non-JSON ${res.status} body`);
+    throw new ApiError(
+      res.status,
+      code,
+      parsed.ok ? undefined : t("errors.api.nonJsonErrorBody", { status: res.status }),
+    );
   }
 
   if (!parsed.ok) {
     if (text.length === 0) return validator(undefined, res.status);
-    throw new ApiError(res.status, "invalid_response_body", "server returned non-JSON 2xx body");
+    throw new ApiError(res.status, "invalid_response_body", t("errors.api.nonJsonSuccessBody"));
   }
 
   return validator(parsed.value, res.status);

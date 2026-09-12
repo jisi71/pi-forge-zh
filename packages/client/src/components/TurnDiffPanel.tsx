@@ -3,6 +3,7 @@ import { Columns2, FileDiff, RefreshCw, Rows2 } from "lucide-react";
 import { api, ApiError, type TurnDiffEntry } from "../lib/api-client";
 import { useSessionStore } from "../store/session-store";
 import { DiffBlock } from "./DiffBlock";
+import { useT } from "../i18n";
 
 type ViewType = "unified" | "split";
 const VIEW_TYPE_KEY = "forge.turnDiff.viewType";
@@ -33,6 +34,7 @@ function readPersistedViewType(): ViewType {
  * side-by-side toggle for wide viewports lands as a polish item.
  */
 export function TurnDiffPanel() {
+  const t = useT();
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   // Refresh the diff once per agent_end via the explicit counter the
   // session-store bumps on every terminal event. Same signal App.tsx
@@ -110,7 +112,7 @@ export function TurnDiffPanel() {
   if (activeSessionId === undefined) {
     return (
       <div className="flex h-full items-center justify-center px-4 text-center text-xs italic text-neutral-500">
-        Pick a session to see its file changes.
+        {t("chatView.turnDiff.pickSession")}
       </div>
     );
   }
@@ -120,7 +122,7 @@ export function TurnDiffPanel() {
       <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2">
         <div className="flex items-center gap-2 font-medium text-neutral-200">
           <FileDiff size={13} />
-          Last turn
+          {t("chatView.turnDiff.lastTurn")}
           {entries.length > 0 && (
             <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
               {entries.length}
@@ -131,14 +133,18 @@ export function TurnDiffPanel() {
           <button
             onClick={() => setAndPersistViewType(viewType === "split" ? "unified" : "split")}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title={viewType === "split" ? "Switch to unified view" : "Switch to side-by-side view"}
+            title={
+              viewType === "split"
+                ? t("chatView.turnDiff.toUnified")
+                : t("chatView.turnDiff.toSplit")
+            }
           >
             {viewType === "split" ? <Rows2 size={13} /> : <Columns2 size={13} />}
           </button>
           <button
             onClick={() => void refresh()}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Refresh diff"
+            title={t("chatView.turnDiff.refresh")}
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           </button>
@@ -153,10 +159,10 @@ export function TurnDiffPanel() {
         {entries.length === 0 && (
           <p className="px-3 py-3 italic text-neutral-500">
             {loading
-              ? "Loading…"
+              ? t("common.loading")
               : error !== undefined
-                ? "Couldn't load the latest turn diff (see banner)."
-                : "No file changes from the most recent turn."}
+                ? t("chatView.turnDiff.errorLoad")
+                : t("chatView.turnDiff.empty")}
           </p>
         )}
         {entries.map((entry) => {
@@ -173,7 +179,7 @@ export function TurnDiffPanel() {
                   <span className="truncate font-mono text-neutral-200">{name}</span>
                   {entry.isPureAddition && (
                     <span className="rounded bg-emerald-900/40 px-1 py-0.5 text-[9px] uppercase tracking-wider text-emerald-300 light:bg-emerald-100 light:text-emerald-800">
-                      new
+                      {t("chatView.turnDiff.newFile")}
                     </span>
                   )}
                 </span>

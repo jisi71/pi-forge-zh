@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { X } from "lucide-react";
+import { useT } from "../i18n";
 
 /**
  * Visual primitive for modal dialogs. Replaces the built-in
@@ -37,6 +38,7 @@ export function Modal({
    */
   initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
+  const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -146,8 +148,8 @@ export function Modal({
           <button
             onClick={onClose}
             className="rounded p-2 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Close (Esc)"
-            aria-label="Close"
+            title={t("common.closeEsc")}
+            aria-label={t("common.close")}
           >
             <X size={20} />
           </button>
@@ -173,7 +175,7 @@ export function PromptDialog({
   label,
   initialValue = "",
   placeholder,
-  primaryLabel = "OK",
+  primaryLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -184,6 +186,7 @@ export function PromptDialog({
   placeholder?: string;
   primaryLabel?: string;
 }) {
+  const t = useT();
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -224,14 +227,14 @@ export function PromptDialog({
             onClick={onClose}
             className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             disabled={trimmed.length === 0}
             className="rounded-md bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {primaryLabel}
+            {primaryLabel ?? t("common.ok")}
           </button>
         </footer>
       </form>
@@ -250,7 +253,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  primaryLabel = "Confirm",
+  primaryLabel,
   tone = "default",
 }: {
   open: boolean;
@@ -261,6 +264,7 @@ export function ConfirmDialog({
   primaryLabel?: string;
   tone?: "default" | "danger";
 }) {
+  const t = useT();
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className="flex flex-col gap-3 px-4 py-3">
@@ -271,7 +275,7 @@ export function ConfirmDialog({
             onClick={onClose}
             className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -282,7 +286,7 @@ export function ConfirmDialog({
                 : "rounded-md bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-white"
             }
           >
-            {primaryLabel}
+            {primaryLabel ?? t("common.confirm")}
           </button>
         </footer>
       </div>

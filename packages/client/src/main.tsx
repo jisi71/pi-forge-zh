@@ -4,6 +4,7 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
 import "./index.css";
 import { bootTheme } from "./lib/theme";
+import { bootLocale, t } from "./i18n";
 
 // Apply the persisted theme BEFORE React mounts so the first paint
 // uses the correct palette (no dark→light flash on a Light theme
@@ -11,6 +12,12 @@ import { bootTheme } from "./lib/theme";
 // `<html data-theme>`; CSS rules in index.css then provide the
 // matching neutral palette to every Tailwind class.
 bootTheme();
+
+// Resolve the UI language BEFORE React mounts (persisted preference →
+// `?lang=` override → browser detection) and stamp `<html lang>` so the
+// first paint is already in the right language. Missing translations
+// fall back to English at lookup time — see ./i18n.
+bootLocale();
 
 // Auto-register the service worker (vite-plugin-pwa). `autoUpdate` mode
 // silently swaps in new shells on the next reload — no banner needed.
@@ -51,14 +58,13 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
             overflow: "auto",
           }}
         >
-          <h1 style={{ color: "#fff", marginBottom: "1rem" }}>pi-forge: render crash</h1>
+          <h1 style={{ color: "#fff", marginBottom: "1rem" }}>{t("errors.crash.title")}</h1>
           <p style={{ color: "#d4d4d4", marginBottom: "1rem" }}>{this.state.error.message}</p>
           <pre style={{ fontSize: "11px", color: "#a3a3a3" }}>
-            {this.state.error.stack ?? "(no stack)"}
+            {this.state.error.stack ?? t("errors.crash.noStack")}
           </pre>
           <p style={{ marginTop: "2rem", color: "#71717a", fontSize: "12px" }}>
-            Tip: open the browser console for more detail. Try clearing localStorage (devtools →
-            Application → Local Storage → Clear) and refreshing if the error mentions stale state.
+            {t("errors.crash.tip")}
           </p>
         </main>
       );

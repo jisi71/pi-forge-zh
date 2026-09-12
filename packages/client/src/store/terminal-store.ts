@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { t } from "../i18n";
 
 /**
  * Terminal-tab metadata. The actual `WebSocket` and `xterm.js` `Terminal`
@@ -134,7 +135,7 @@ export const useTerminalStore = create<TerminalState>((set) => ({
       const tab: TerminalTab = {
         id,
         projectId,
-        label: `Terminal ${projectTabs.length + 1}`,
+        label: t("errors.terminal.tabLabel", { index: projectTabs.length + 1 }),
         createdAt: Date.now(),
       };
       const next = { tabs: [...s.tabs, tab], activeTabId: id };

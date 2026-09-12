@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, Layers } from "lucide-react";
 import type { CompactionEvent } from "../store/session-store";
+import { useT } from "../i18n";
 
 const NEAR_BOTTOM_PX = 96;
 
@@ -40,6 +41,7 @@ export function CompactionCard({
    *  Message component. Passed in to avoid a circular import. */
   renderArchived: () => React.ReactNode;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const summaryFirstLine = event.summary.split("\n")[0]?.trim() ?? "";
   const truncated =
@@ -65,11 +67,15 @@ export function CompactionCard({
       type="button"
       onClick={() => toggleOpen(false)}
       className="flex w-full items-center justify-center gap-1 rounded px-2 py-1 text-[10px] uppercase tracking-wider text-amber-300/80 hover:bg-amber-900/20 hover:text-amber-100 light:text-amber-700 light:hover:bg-amber-100 light:hover:text-amber-900"
-      title="Collapse archived messages"
-      aria-label={`Collapse compaction summary from ${position}`}
+      title={t("chatView.compaction.collapseTitle")}
+      aria-label={
+        position === "top"
+          ? t("chatView.compaction.collapseAriaTop")
+          : t("chatView.compaction.collapseAriaBottom")
+      }
     >
       <ChevronDown size={11} />
-      Collapse
+      {t("chatView.compaction.collapse")}
     </button>
   );
 
@@ -99,15 +105,21 @@ export function CompactionCard({
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-amber-200/90 hover:bg-amber-900/20 light:text-amber-800 light:hover:bg-amber-100"
         title={
           open
-            ? "Hide archived messages"
-            : `Expand ${archivedCount} archived message${archivedCount === 1 ? "" : "s"}`
+            ? t("chatView.compaction.hideTitle")
+            : t.plural("chatView.compaction.expandTitle", archivedCount)
         }
       >
         {open ? <ChevronUp size={12} /> : <ChevronRight size={12} />}
         <Layers size={12} className="text-amber-400 light:text-amber-700" />
-        <span className="flex-1 truncate">{truncated.length > 0 ? truncated : "Compaction"}</span>
+        <span className="flex-1 truncate">
+          {truncated.length > 0 ? truncated : t("chatView.compaction.fallbackTitle")}
+        </span>
         <span className="shrink-0 font-mono text-[10px] text-amber-300/70 light:text-amber-700/80">
-          {archivedCount} msg · {event.tokensBefore.toLocaleString()} tok · {timeLabel}
+          {t("chatView.compaction.meta", {
+            messages: archivedCount,
+            tokens: event.tokensBefore.toLocaleString(),
+            time: timeLabel,
+          })}
         </span>
       </button>
     </div>

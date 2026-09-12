@@ -28,6 +28,7 @@ import { deriveCounts, selectTodoState, useTodoStore } from "../store/todo-store
 import { countRunning, selectProcesses, useProcessesStore } from "../store/processes-store";
 import { extractClipboardImageFiles } from "../lib/clipboard-images";
 import { isChatSubmitShortcut } from "../lib/chat-input-keys";
+import { useT } from "../i18n";
 import { ProcessesPopover, TodosPopover } from "./InputPopovers";
 
 /**
@@ -232,6 +233,7 @@ function scoreOption(opt: ModelOption, query: string): number | undefined {
 const DOUBLE_ESC_WINDOW_MS = 600;
 
 export function ChatInput({ sessionId }: Props) {
+  const t = useT();
   const isStreaming = useSessionStore((s) => s.streamingBySession[sessionId] ?? false);
   const isReadOnlyExternal = useSessionStore((s) =>
     Object.values(s.byProject).some((sessions) =>
@@ -543,7 +545,7 @@ export function ChatInput({ sessionId }: Props) {
     const commands: SlashCommand[] = [
       {
         name: "/compact",
-        description: "Manually compact the session context",
+        description: t("chatInput.slash.compact"),
         available: !isStreaming,
         run: async () => {
           try {
@@ -551,13 +553,13 @@ export function ChatInput({ sessionId }: Props) {
             reloadMessages(sessionId);
           } catch (err) {
             const code = err instanceof ApiError ? err.code : (err as Error).message;
-            setAttachmentError(`Compact failed: ${code}`);
+            setAttachmentError(t("chatInput.error.compactFailed", { code }));
           }
         },
       },
       {
         name: "/clear",
-        description: "Compact context (alias for /compact)",
+        description: t("chatInput.slash.clear"),
         available: !isStreaming,
         run: async () => {
           try {
@@ -565,54 +567,47 @@ export function ChatInput({ sessionId }: Props) {
             reloadMessages(sessionId);
           } catch (err) {
             const code = err instanceof ApiError ? err.code : (err as Error).message;
-            setAttachmentError(`Clear failed: ${code}`);
+            setAttachmentError(t("chatInput.error.clearFailed", { code }));
           }
         },
       },
       {
         name: "/abort",
-        description: "Stop the agent (alias for the Abort button)",
+        description: t("chatInput.slash.abort"),
         available: isStreaming,
         run: () => abortSession(sessionId),
       },
       {
         name: "/settings",
-        description: "Open the Settings panel",
+        description: t("chatInput.slash.settings"),
         available: true,
         run: () => openSettings(),
       },
       {
         name: "/skills",
-        description: "Open Settings → Skills",
+        description: t("chatInput.slash.skills"),
         available: true,
         run: () => openSettings("skills"),
       },
       {
         name: "/mcp",
-        description: "Open Settings → MCP",
+        description: t("chatInput.slash.mcp"),
         available: true,
         run: () => openSettings("mcp"),
       },
       {
         name: "/providers",
-        description: "Open Settings → Providers",
+        description: t("chatInput.slash.providers"),
         available: true,
         run: () => openSettings("providers"),
       },
       {
         name: "/help",
-        description: minimalUi
-          ? "Show what `/` and `@` do in the input"
-          : "Show what `/`, `!`, `@` do in the input",
+        description: minimalUi ? t("chatInput.slash.helpMinimal") : t("chatInput.slash.helpFull"),
         available: true,
         run: () => {
           setAttachmentError(
-            minimalUi
-              ? "/<cmd> runs a pi-forge command (compact, abort, settings, …). " +
-                  "@<path> references a project file (autocomplete from the popover)."
-              : "/<cmd> runs a pi-forge command (compact, abort, settings, …). " +
-                  "!cmd runs bash (output → next LLM context); !!cmd runs bash local-only. " +
-                  "@<path> references a project file (autocomplete from the popover).",
+            minimalUi ? t("chatInput.slash.helpTextMinimal") : t("chatInput.slash.helpTextFull"),
           );
         },
       },
@@ -625,7 +620,9 @@ export function ChatInput({ sessionId }: Props) {
     // expands before forwarding to the model.
     for (const p of availablePrompts) {
       const description =
-        p.argumentHint !== undefined ? `${p.description} — args: ${p.argumentHint}` : p.description;
+        p.argumentHint !== undefined
+          ? t("chatInput.slash.promptArgs", { description: p.description, args: p.argumentHint })
+          : p.description;
       commands.push({
         name: `/${p.name}`,
         description,
@@ -646,6 +643,7 @@ export function ChatInput({ sessionId }: Props) {
     }
     return commands;
   }, [
+    t,
     isStreaming,
     sessionId,
     abortSession,
@@ -821,16 +819,18 @@ export function ChatInput({ sessionId }: Props) {
     for (const f of files) {
       if (next.length >= MAX_TOTAL_FILES) {
         setAttachmentError(
-          `Up to ${MAX_TOTAL_FILES} attachments per message; "${f.name}" dropped.`,
+          t("chatInput.attachment.tooManyTotal", { max: MAX_TOTAL_FILES, name: f.name }),
         );
         continue;
       }
       if (f.size > MAX_FILE_BYTES) {
-        setAttachmentError(`"${f.name}" exceeds the 20 MB per-file limit.`);
+        setAttachmentError(t("chatInput.attachment.tooLarge", { name: f.name }));
         continue;
       }
       if (f.type.startsWith("image/") && imageCount >= MAX_IMAGES) {
-        setAttachmentError(`Up to ${MAX_IMAGES} images per message; "${f.name}" dropped.`);
+        setAttachmentError(
+          t("chatInput.attachment.tooManyImages", { max: MAX_IMAGES, name: f.name }),
+        );
         continue;
       }
       // Known binary types the prompt pipeline can't carry (no PDF /
@@ -839,9 +839,7 @@ export function ChatInput({ sessionId }: Props) {
       // feedback instead of an opaque server-side `unsupported_attachment_type`.
       const ext = f.name.includes(".") ? f.name.split(".").pop()?.toLowerCase() : undefined;
       if (ext !== undefined && KNOWN_BINARY_EXTENSIONS.has(ext)) {
-        setAttachmentError(
-          `"${f.name}" is a binary format that the agent can't read directly. Convert to text/markdown (or to a PNG/JPEG screenshot for diagrams) and try again.`,
-        );
+        setAttachmentError(t("chatInput.attachment.binary", { name: f.name }));
         continue;
       }
       next.push(f);
@@ -873,13 +871,11 @@ export function ChatInput({ sessionId }: Props) {
     const imageFiles = extractClipboardImageFiles(e.clipboardData);
     if (imageFiles.length === 0) return;
     if (isReadOnlyExternal) {
-      setAttachmentError("This pi-subagents child is running externally and is read-only.");
+      setAttachmentError(t("chatInput.error.readOnlyExternal"));
       return;
     }
     if (isStreaming) {
-      setAttachmentError(
-        "Images pasted while streaming aren't attached. Wait for the current run to finish.",
-      );
+      setAttachmentError(t("chatInput.error.pasteWhileStreaming"));
       return;
     }
     // Do not preventDefault: when the clipboard contains both images
@@ -922,10 +918,10 @@ export function ChatInput({ sessionId }: Props) {
     const fromMessages = userHistory(messages);
     const seen = new Set<string>();
     const merged: string[] = [];
-    for (const t of [...persisted, ...fromMessages]) {
-      if (seen.has(t)) continue;
-      seen.add(t);
-      merged.push(t);
+    for (const entry of [...persisted, ...fromMessages]) {
+      if (seen.has(entry)) continue;
+      seen.add(entry);
+      merged.push(entry);
     }
     return merged;
     // historyTick is intentionally in the deps — bumping it
@@ -996,7 +992,7 @@ export function ChatInput({ sessionId }: Props) {
       .catch((err: unknown) => {
         // Surface as a non-fatal hint; chat still works with the default model.
         const code = err instanceof ApiError ? err.code : (err as Error).message;
-        setModelError(`models unavailable (${code})`);
+        setModelError(t("chatInput.error.modelsUnavailable", { code }));
       });
     // settings.json — split fetch from providers because the picker UI
     // needs to render even when settings is empty / missing.
@@ -1012,7 +1008,9 @@ export function ChatInput({ sessionId }: Props) {
         // Settings unreadable — keep defaultModel undefined; the picker
         // gracefully falls back to "Use agent default" with no name.
       });
-  }, []);
+    // `t` is a stable reference (see i18n/index.ts) — listed so the
+    // localized fallback label inside this effect can never go stale.
+  }, [t]);
 
   // On session change: re-read the per-session selection from storage and
   // re-apply it to the server-side AgentSession. Without this, the picker
@@ -1063,9 +1061,9 @@ export function ChatInput({ sessionId }: Props) {
     void api.setModel(callSessionId, provider, modelId).catch((err: unknown) => {
       if (callSessionId !== sessionId) return;
       const code = err instanceof ApiError ? err.code : (err as Error).message;
-      setModelError(`set model failed: ${code}`);
+      setModelError(t("chatInput.error.setModelFailed", { code }));
     });
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   // Consume any pending input draft set by the session-tree's
   // edit-and-resubmit fork flow. One-shot: clear on the store side
@@ -1145,7 +1143,7 @@ export function ChatInput({ sessionId }: Props) {
         });
     } catch (err) {
       const code = err instanceof ApiError ? err.code : (err as Error).message;
-      setModelError(`set model failed: ${code}`);
+      setModelError(t("chatInput.error.setModelFailed", { code }));
     }
   };
 
@@ -1199,7 +1197,7 @@ export function ChatInput({ sessionId }: Props) {
       setThinkingError(undefined);
     } catch (err) {
       const code = err instanceof ApiError ? err.code : (err as Error).message;
-      setThinkingError(`set thinking level failed: ${code}`);
+      setThinkingError(t("chatInput.error.setThinkingLevelFailed", { code }));
     }
   };
 
@@ -1210,7 +1208,7 @@ export function ChatInput({ sessionId }: Props) {
     // sending "look at this" with an image but no caption is a
     // common path. Server still rejects entirely-empty prompts.
     if (isReadOnlyExternal) {
-      setAttachmentError("This pi-subagents child is running externally and is read-only.");
+      setAttachmentError(t("chatInput.error.readOnlyExternal"));
       return;
     }
     if ((value.length === 0 && attachments.length === 0) || submitting) return;
@@ -1220,7 +1218,7 @@ export function ChatInput({ sessionId }: Props) {
     // never returns from slashRunSelected still gets recorded.
     if (value.length > 0) {
       pushInputHistory(sessionId, value);
-      setHistoryTick((t) => t + 1);
+      setHistoryTick((n) => n + 1);
     }
     // /-command dispatch — the keyboard path (Enter) handles this
     // first, but a click on Send also lands here and a `/foo` typed
@@ -1233,7 +1231,7 @@ export function ChatInput({ sessionId }: Props) {
         slashRunSelected();
       } else {
         setAttachmentError(
-          `Unknown command "${text.split(/\s/)[0] ?? text}". Type /help to see commands.`,
+          t("chatInput.error.unknownCommand", { command: text.split(/\s/)[0] ?? text }),
         );
       }
       return;
@@ -1249,18 +1247,18 @@ export function ChatInput({ sessionId }: Props) {
       // for stdin/cwd state and surprise the user.
       if (!isStreaming && /^!!?[^!]/.test(value)) {
         if (minimalUi) {
-          setAttachmentError("Bash exec is disabled in this deployment.");
+          setAttachmentError(t("chatInput.error.bashDisabled"));
           return;
         }
         const excludeFromContext = value.startsWith("!!");
         const command = value.slice(excludeFromContext ? 2 : 1).trim();
         if (command.length === 0) {
-          setAttachmentError("Empty bash command. Type something after the `!`.");
+          setAttachmentError(t("chatInput.error.emptyBash"));
           return;
         }
         if (attachments.length > 0) {
           clearAttachments();
-          setAttachmentError("Attachments aren't sent with `!` exec. Cleared.");
+          setAttachmentError(t("chatInput.error.attachmentsBashCleared"));
         }
         await api.exec(sessionId, command, { excludeFromContext });
         // The acting tab refetches via session-store's user_bash_result
@@ -1280,7 +1278,7 @@ export function ChatInput({ sessionId }: Props) {
         // the warning and `sendSteer` resolving.
         if (attachments.length > 0) {
           clearAttachments();
-          setAttachmentError("Attachments aren't sent on steer (mid-turn). Cleared.");
+          setAttachmentError(t("chatInput.error.attachmentsSteerCleared"));
         }
         await sendSteer(sessionId, rawValue);
       } else {
@@ -1302,7 +1300,7 @@ export function ChatInput({ sessionId }: Props) {
       // Surface bash-exec errors inline (api.exec throws ApiError on
       // 4xx/5xx). Other paths still surface via store.error below.
       const code = err instanceof ApiError ? err.code : (err as Error).message;
-      setAttachmentError(`Command failed: ${code}`);
+      setAttachmentError(t("chatInput.error.commandFailed", { code }));
     } finally {
       setSubmitting(false);
     }
@@ -1357,7 +1355,7 @@ export function ChatInput({ sessionId }: Props) {
         // silently sending the literal `/bogus` text to the LLM.
         e.preventDefault();
         setAttachmentError(
-          `Unknown command "${text.split(/\s/)[0] ?? text}". Type /help to see commands, or backspace the leading / to send as a prompt.`,
+          t("chatInput.error.unknownCommandHint", { command: text.split(/\s/)[0] ?? text }),
         );
         return;
       }
@@ -1647,6 +1645,15 @@ export function ChatInput({ sessionId }: Props) {
     );
   }, [text, isMobile, textareaHeight]);
 
+  // Localized fragments for the todo badge tooltip. Hoisted out of the
+  // JSX so the mobile-popover and desktop-panel variants reuse the same
+  // translated pieces instead of duplicating the interpolation.
+  const doneLabel = `${todoCounts.completed}/${todoCounts.total}`;
+  const note =
+    todoCounts.inProgress > 0
+      ? t("chatInput.todos.inProgressComma", { count: todoCounts.inProgress })
+      : "";
+
   return (
     <div className="forge-chat-input-root bg-neutral-950">
       {/*
@@ -1666,7 +1673,7 @@ export function ChatInput({ sessionId }: Props) {
       <div
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Resize chat input"
+        aria-label={t("chatInput.resizeHandle")}
         onPointerDown={startDividerDrag}
         className="group relative hidden h-px cursor-row-resize bg-neutral-800 hover:bg-neutral-600 active:bg-neutral-500 md:block"
       >
@@ -1704,7 +1711,7 @@ export function ChatInput({ sessionId }: Props) {
                 <span
                   key={`ref-${i}-${path}`}
                   className="inline-flex max-w-[220px] items-center gap-1 truncate rounded border border-emerald-700/60 bg-emerald-900/20 px-1.5 py-0.5 text-[11px] text-emerald-200"
-                  title={`@${path} — model will use its read tool to load this file when it needs to`}
+                  title={t("chatInput.fileRef.title", { path })}
                 >
                   <AtSign size={11} className="shrink-0" />
                   <span className="truncate font-mono">{path}</span>
@@ -1712,7 +1719,7 @@ export function ChatInput({ sessionId }: Props) {
                     type="button"
                     onClick={() => removeFileRef(path)}
                     className="-mr-0.5 ml-0.5 rounded p-0.5 text-emerald-300/70 hover:bg-emerald-900/40 hover:text-emerald-100"
-                    title={`Remove @${path}`}
+                    title={t("chatInput.fileRef.remove", { path })}
                   >
                     <X size={10} />
                   </button>
@@ -1740,8 +1747,8 @@ export function ChatInput({ sessionId }: Props) {
                   type="button"
                   onClick={resetTextareaHeight}
                   className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="Reset chat input height to default"
-                  aria-label="Reset chat input height to default"
+                  title={t("chatInput.resetHeight")}
+                  aria-label={t("chatInput.resetHeight")}
                 >
                   <RotateCcw size={12} />
                 </button>
@@ -1771,10 +1778,14 @@ export function ChatInput({ sessionId }: Props) {
                     }`}
                     title={
                       isMobile
-                        ? `${runningProcesses} background process(es) running — show list`
-                        : `${runningProcesses} background process(es) running — view processes panel`
+                        ? t.plural("chatInput.processes.titleMobile", runningProcesses)
+                        : t.plural("chatInput.processes.titleDesktop", runningProcesses)
                     }
-                    aria-label={isMobile ? "Show processes list" : "View processes panel"}
+                    aria-label={
+                      isMobile
+                        ? t("chatInput.processes.showList")
+                        : t("chatInput.processes.viewPanel")
+                    }
                     aria-expanded={isMobile ? processesPopoverOpen : undefined}
                   >
                     <Activity size={12} className="text-emerald-400 light:text-emerald-700" />
@@ -1811,20 +1822,14 @@ export function ChatInput({ sessionId }: Props) {
                     }`}
                     title={
                       isMobile
-                        ? `Tasks: ${todoCounts.completed}/${todoCounts.total} done${
-                            todoCounts.inProgress > 0
-                              ? `, ${todoCounts.inProgress} in progress`
-                              : ""
-                          }`
+                        ? t("chatInput.todos.titleMobile", { done: doneLabel, inProgress: note })
                         : todoPanelOpen
-                          ? "Hide todo panel"
-                          : `Show todo panel (${todoCounts.completed}/${todoCounts.total} done${
-                              todoCounts.inProgress > 0
-                                ? `, ${todoCounts.inProgress} in progress`
-                                : ""
-                            })`
+                          ? t("chatInput.todos.hide")
+                          : t("chatInput.todos.show", { done: doneLabel, inProgress: note })
                     }
-                    aria-label={isMobile ? "Show tasks list" : "Toggle todo panel"}
+                    aria-label={
+                      isMobile ? t("chatInput.todos.showList") : t("chatInput.todos.toggle")
+                    }
                     aria-expanded={isMobile ? todosPopoverOpen : undefined}
                     aria-pressed={isMobile ? undefined : todoPanelOpen}
                   >
@@ -1846,7 +1851,9 @@ export function ChatInput({ sessionId }: Props) {
             </div>
           )}
         </div>
-        {error !== undefined && <p className="text-xs text-red-400">Error: {error}</p>}
+        {error !== undefined && (
+          <p className="text-xs text-red-400">{t("chatInput.errorPrefix", { message: error })}</p>
+        )}
         {attachmentError !== undefined && (
           <p className="text-xs text-amber-400">{attachmentError}</p>
         )}
@@ -1908,13 +1915,13 @@ export function ChatInput({ sessionId }: Props) {
               <button
                 onClick={() => setAttachMenuOpen((o) => !o)}
                 disabled={submitting || isStreaming || isReadOnlyExternal}
-                aria-label="Attach"
+                aria-label={t("chatInput.attachment.label")}
                 aria-expanded={attachMenuOpen}
                 className="inline-flex min-h-11 min-w-11 items-center justify-center self-stretch rounded-md border border-neutral-700 bg-neutral-900 px-2 text-neutral-300 hover:border-neutral-500 hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
                 title={
                   isStreaming
-                    ? "Attachments aren't sent on steer (mid-turn)."
-                    : "Attach a photo or a file"
+                    ? t("chatInput.attachment.steerWarning")
+                    : t("chatInput.attachment.mobileTitle")
                 }
               >
                 <Paperclip size={16} />
@@ -1929,7 +1936,7 @@ export function ChatInput({ sessionId }: Props) {
                     className="flex min-h-11 items-center gap-2 px-3 text-left text-[14px] text-neutral-200 hover:bg-neutral-800"
                   >
                     <ImageIcon size={16} className="shrink-0 text-neutral-400" />
-                    Photo
+                    {t("chatInput.attachment.photo")}
                   </button>
                   <button
                     onClick={() => {
@@ -1939,7 +1946,7 @@ export function ChatInput({ sessionId }: Props) {
                     className="flex min-h-11 items-center gap-2 border-t border-neutral-800 px-3 text-left text-[14px] text-neutral-200 hover:bg-neutral-800"
                   >
                     <Paperclip size={16} className="shrink-0 text-neutral-400" />
-                    File
+                    {t("chatInput.attachment.file")}
                   </button>
                 </div>
               )}
@@ -1948,12 +1955,12 @@ export function ChatInput({ sessionId }: Props) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={submitting || isStreaming || isReadOnlyExternal}
-              aria-label="Attach files"
+              aria-label={t("chatInput.attachment.filesLabel")}
               className="inline-flex items-center justify-center self-stretch rounded-md border border-neutral-700 bg-neutral-900 px-2 text-neutral-300 hover:border-neutral-500 hover:text-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
               title={
                 isStreaming
-                  ? "Attachments aren't sent on steer (mid-turn). Wait for the current run to finish."
-                  : "Attach files (images go into model context; text files are prepended to the prompt)"
+                  ? t("chatInput.attachment.steerWarningLong")
+                  : t("chatInput.attachment.desktopTitle")
               }
             >
               <Paperclip size={14} />
@@ -1993,7 +2000,7 @@ export function ChatInput({ sessionId }: Props) {
                       title={
                         cmd.available
                           ? cmd.description
-                          : `${cmd.description} — unavailable right now`
+                          : t("chatInput.slash.unavailable", { description: cmd.description })
                       }
                     >
                       {/* Stack name/description on phones — descriptions
@@ -2013,7 +2020,7 @@ export function ChatInput({ sessionId }: Props) {
                 {/* Hint footer — keyboard hints aren't useful on a
                     touchscreen, hide on mobile to save vertical space. */}
                 <div className="hidden border-t border-neutral-800 px-3 py-1 text-[10px] text-neutral-500 md:block">
-                  ↑↓ navigate · Enter/Tab run · Esc cancel
+                  {t("chatInput.slash.hint")}
                 </div>
               </div>
             )}
@@ -2047,7 +2054,7 @@ export function ChatInput({ sessionId }: Props) {
                   ))}
                 </div>
                 <div className="hidden border-t border-neutral-800 px-3 py-1 text-[10px] text-neutral-500 md:block">
-                  ↑↓ navigate · Enter/Tab insert · Esc close
+                  {t("chatInput.ac.hint")}
                 </div>
               </div>
             )}
@@ -2073,26 +2080,22 @@ export function ChatInput({ sessionId }: Props) {
               }}
               placeholder={
                 isReadOnlyExternal
-                  ? "Read-only while this pi-subagents child is running externally…"
+                  ? t("chatInput.placeholder.readOnly")
                   : isAutoRetrying
-                    ? "Auto-retry in progress — your message will be queued and sent after the retry completes…"
+                    ? t("chatInput.placeholder.autoRetry")
                     : isStreaming
                       ? isMobile
-                        ? "Steer the agent…"
-                        : "Steer the agent (Enter to send; Shift+Enter for newline)…"
+                        ? t("chatInput.placeholder.steeringMobile")
+                        : t("chatInput.placeholder.steering")
                       : isMobile
                         ? minimalUi
-                          ? "Ask pi — Enter for newline; Send to submit; `/` runs commands, `@path` references files…"
-                          : "Ask pi — Enter for newline; Send to submit; `/` runs commands, `!` runs bash, `@path` references files…"
+                          ? t("chatInput.placeholder.idleMinimalMobile")
+                          : t("chatInput.placeholder.idleMobile")
                         : minimalUi
-                          ? "Ask pi (Enter to send; Shift+Enter for newline) — `/` runs commands, `@path` references files…"
-                          : "Ask pi (Enter to send; Shift+Enter for newline) — `/` runs commands, `!` runs bash, `@path` references files…"
+                          ? t("chatInput.placeholder.idleMinimal")
+                          : t("chatInput.placeholder.idle")
               }
-              title={
-                isAutoRetrying
-                  ? "The agent is auto-retrying after a provider error. New messages are queued and delivered when the retry succeeds."
-                  : undefined
-              }
+              title={isAutoRetrying ? t("chatInput.placeholder.retryTitle") : undefined}
               // Starts at a comfortable minimum (2 rows on mobile,
               // 3 on desktop), then auto-grows with the user's input.
               // Desktop drag-resize sets the effective pane height;
@@ -2133,11 +2136,11 @@ export function ChatInput({ sessionId }: Props) {
                 }`}
                 title={
                   bangMode === "local"
-                    ? "!! — runs bash; output stays local (excluded from LLM context)"
-                    : "! — runs bash; output is added to the next turn's LLM context"
+                    ? t("chatInput.bang.localTitle")
+                    : t("chatInput.bang.contextTitle")
                 }
               >
-                {bangMode === "local" ? "bash · local" : "bash · context"}
+                {bangMode === "local" ? t("chatInput.bang.local") : t("chatInput.bang.context")}
               </span>
             )}
           </div>
@@ -2165,30 +2168,23 @@ export function ChatInput({ sessionId }: Props) {
                 isReadOnlyExternal
               }
               className="flex-1 rounded-md bg-neutral-100 px-4 text-sm font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 md:flex-none md:py-2"
-              title={
-                isStreaming
-                  ? "Send (Enter or Cmd/Ctrl+Enter; Pi queues at the next agent break — steer or follow-up depending on agent state)"
-                  : "Send (Enter or Cmd/Ctrl+Enter)"
-              }
+              title={isStreaming ? t("chatInput.sendTitleStreaming") : t("chatInput.sendTitle")}
             >
-              Send
+              {t("common.send")}
             </button>
             {isStreaming && (
               <button
                 onClick={() => void abortSession(sessionId)}
                 className="flex-1 rounded-md border border-red-700/60 bg-red-950/30 px-3 text-sm font-medium text-red-300 hover:bg-red-900/40 hover:text-red-100 md:flex-none md:py-2 light:border-red-700 light:bg-red-600 light:text-white light:hover:bg-red-700 light:hover:text-white"
-                title="Stop the agent (or press Esc twice in the textbox)"
+                title={t("chatInput.abortTitle")}
               >
-                Abort
+                {t("chatInput.abort")}
               </button>
             )}
           </div>
         </div>
         {isStreaming && (
-          <p className="text-[10px] text-neutral-600">
-            Enter, Cmd/Ctrl+Enter, or Send queues at the next agent break — Pi picks steer or
-            follow-up. Abort: stop the agent (or press Esc twice in the textbox).
-          </p>
+          <p className="text-[10px] text-neutral-600">{t("chatInput.streamingHint")}</p>
         )}
       </div>
     </div>
@@ -2220,6 +2216,7 @@ function ModelPicker({
   value: string;
   onChange: (next: string) => void;
 }) {
+  const t = useT();
   const options = useMemo(() => flattenModels(providers), [providers]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -2256,8 +2253,8 @@ function ModelPicker({
     selected !== undefined
       ? `${selected.provider} / ${selected.name}`
       : defaultLabel.length > 0
-        ? `${defaultLabel} (default)`
-        : "default model";
+        ? t("chatInput.model.defaultSuffix", { label: defaultLabel })
+        : t("chatInput.model.defaultModel");
 
   // Close on outside click.
   useEffect(() => {
@@ -2320,9 +2317,9 @@ function ModelPicker({
         onClick={() => setOpen((o) => !o)}
         disabled={providers === undefined}
         className="flex max-w-[260px] items-center gap-1 truncate rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-left text-[11px] text-neutral-200 disabled:opacity-50"
-        title="Override the model for this session (click to search)"
+        title={t("chatInput.model.triggerTitle")}
       >
-        <span className="text-neutral-500">model:</span>
+        <span className="text-neutral-500">{t("chatInput.model.label")}</span>
         <span className="truncate">{triggerLabel}</span>
         <span className="ml-1 text-neutral-500">▾</span>
       </button>
@@ -2340,7 +2337,7 @@ function ModelPicker({
             autoCapitalize="none"
             spellCheck={false}
             onKeyDown={onKeyDown}
-            placeholder="Search provider or model…"
+            placeholder={t("chatInput.model.searchPlaceholder")}
             className="w-full border-b border-neutral-800 bg-transparent px-3 py-2 text-xs text-neutral-100 outline-none"
           />
           <div ref={listRef} className="max-h-72 overflow-y-auto py-1">
@@ -2353,7 +2350,7 @@ function ModelPicker({
               }`}
             >
               <span className="flex min-w-0 items-baseline gap-2">
-                <span>Use agent default</span>
+                <span>{t("chatInput.model.useAgentDefault")}</span>
                 {defaultLabel.length > 0 && (
                   <span className="truncate font-mono text-[10px] text-neutral-500">
                     {defaultLabel}
@@ -2364,7 +2361,7 @@ function ModelPicker({
             </button>
             {filtered.length === 0 ? (
               <p className="px-3 py-2 text-xs italic text-neutral-500">
-                No models match. Add an API key in Settings → Providers.
+                {t("chatInput.model.noMatch")}
               </p>
             ) : (
               filtered.map((opt, i) => (
@@ -2387,7 +2384,7 @@ function ModelPicker({
             )}
           </div>
           <div className="border-t border-neutral-800 px-3 py-1.5 text-[10px] text-neutral-600">
-            {filtered.length} of {options.length} models — ↑↓ to move, Enter to pick, Esc to close
+            {t("chatInput.model.footer", { filtered: filtered.length, total: options.length })}
           </div>
         </div>
       )}
@@ -2415,6 +2412,7 @@ function ThinkingLevelPicker({
   options: readonly string[];
   onChange: (next: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -2433,9 +2431,9 @@ function ThinkingLevelPicker({
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-left text-[11px] text-neutral-200"
-        title="Override the thinking level for this session"
+        title={t("chatInput.thinking.triggerTitle")}
       >
-        <span className="text-neutral-500">thinking:</span>
+        <span className="text-neutral-500">{t("chatInput.thinking.label")}</span>
         <span className="truncate">{value}</span>
         <span className="ml-1 text-neutral-500">▾</span>
       </button>
@@ -2481,6 +2479,7 @@ function AttachmentPreview({
   previewUrls: Map<File, string>;
   onRemove: (f: File) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap gap-2">
       {attachments.map((f, i) => {
@@ -2511,7 +2510,7 @@ function AttachmentPreview({
             <button
               onClick={() => onRemove(f)}
               className="ml-1 rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-red-300"
-              title={`Remove ${f.name}`}
+              title={t("chatInput.attachment.remove", { name: f.name })}
             >
               <X size={16} />
             </button>

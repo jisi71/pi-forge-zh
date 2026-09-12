@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GitBranch, Loader2, Navigation, RefreshCw, X } from "lucide-react";
+import { useT, type TranslateKey } from "../i18n";
 import { api, ApiError, type SessionTreeEntry, type SessionTreeResponse } from "../lib/api-client";
 import { useSessionStore } from "../store/session-store";
 import { Modal } from "./Modal";
@@ -76,7 +77,32 @@ interface NodeView extends SessionTreeEntry {
 const MODEL_KEY_PREFIX = "pi-forge/model/";
 const VIEW_KEY = "pi-forge/sessionTree.view";
 
+/**
+ * Badge text for an entry's role / type. Keyed by the discriminator
+ * `entryTypeLabel` returns so the badge copy can be localized without
+ * touching the value the graph view switches on. A discriminator with
+ * no key here (e.g. a future SDK entry type) renders verbatim.
+ */
+const ENTRY_LABEL_KEYS: Record<string, TranslateKey> = {
+  message: "sessions.tree.entryLabels.message",
+  user: "sessions.tree.entryLabels.user",
+  assistant: "sessions.tree.entryLabels.assistant",
+  tool: "sessions.tree.entryLabels.tool",
+  toolResult: "sessions.tree.entryLabels.toolResult",
+  system: "sessions.tree.entryLabels.system",
+  compactionSummary: "sessions.tree.entryLabels.compactionSummary",
+  thinking: "sessions.tree.entryLabels.thinking",
+  model: "sessions.tree.entryLabels.model",
+  compact: "sessions.tree.entryLabels.compact",
+  branch: "sessions.tree.entryLabels.branch",
+  label: "sessions.tree.entryLabels.label",
+  info: "sessions.tree.entryLabels.info",
+  custom: "sessions.tree.entryLabels.custom",
+  extension: "sessions.tree.entryLabels.extension",
+};
+
 export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
+  const t = useT();
   const isStreaming = useSessionStore((s) => s.streamingBySession[sessionId] ?? false);
   const setActiveSession = useSessionStore((s) => s.setActiveSession);
   const loadSessionsForProject = useSessionStore((s) => s.loadSessionsForProject);
@@ -288,7 +314,7 @@ export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
         <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <GitBranch size={14} className="text-neutral-400" />
-            <h2 className="text-sm font-semibold text-neutral-100">Session tree</h2>
+            <h2 className="text-sm font-semibold text-neutral-100">{t("sessions.tree.title")}</h2>
             {busy && <Loader2 size={11} className="animate-spin text-neutral-500" />}
           </div>
           <div className="flex items-center gap-1">
@@ -303,9 +329,9 @@ export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
                     ? "bg-neutral-700 text-neutral-100"
                     : "text-neutral-400 hover:bg-neutral-800"
                 }`}
-                title="Vertical list view"
+                title={t("sessions.tree.viewListTooltip")}
               >
-                List
+                {t("sessions.tree.viewList")}
               </button>
               <button
                 onClick={() => setViewPersisted("graph")}
@@ -314,23 +340,23 @@ export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
                     ? "bg-neutral-700 text-neutral-100"
                     : "text-neutral-400 hover:bg-neutral-800"
                 }`}
-                title="Branching graph view (turn-grouped)"
+                title={t("sessions.tree.viewGraphTooltip")}
               >
-                Graph
+                {t("sessions.tree.viewGraph")}
               </button>
             </div>
             <button
               onClick={() => void refresh()}
               disabled={loading || busy}
               className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
-              title="Refresh tree"
+              title={t("sessions.tree.refresh")}
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
             </button>
             <button
               onClick={onClose}
               className="rounded p-2 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-              title="Close (Esc)"
+              title={t("common.closeEsc")}
             >
               <X size={20} />
             </button>
@@ -346,12 +372,12 @@ export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {loading && tree === undefined && (
             <div className="px-4 py-6 text-center text-xs italic text-neutral-500">
-              Loading tree…
+              {t("sessions.tree.loading")}
             </div>
           )}
           {!loading && nodes.length === 0 && (
             <div className="px-4 py-6 text-center text-xs italic text-neutral-500">
-              No entries yet.
+              {t("sessions.tree.empty")}
             </div>
           )}
           {view === "list" ? (
@@ -386,13 +412,9 @@ export function SessionTreePanel({ sessionId, projectId, onClose }: Props) {
         </div>
 
         <footer className="flex items-center justify-between border-t border-neutral-800 bg-neutral-900/40 px-4 py-2 text-[10px] text-neutral-500">
-          <span>
-            Click a row to navigate · fork icon on user messages to branch from that point
-          </span>
+          <span>{t("sessions.tree.hint")}</span>
           {tree !== undefined && (
-            <span>
-              {tree.entries.length} {tree.entries.length === 1 ? "entry" : "entries"}
-            </span>
+            <span>{t.plural("sessions.tree.entryCount", tree.entries.length)}</span>
           )}
         </footer>
       </div>
@@ -428,6 +450,7 @@ function NavigateConfirmDialog({
   onCancel: () => void;
   onConfirm: (opts: { summarize?: boolean; customInstructions?: string; label?: string }) => void;
 }) {
+  const t = useT();
   const [label, setLabel] = useState("");
   const [summarize, setSummarize] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
@@ -457,7 +480,7 @@ function NavigateConfirmDialog({
     <Modal
       open={open}
       onClose={onCancel}
-      title="Navigate session leaf"
+      title={t("sessions.navigate.title")}
       width={showAbandonOptions ? "max-w-md" : "max-w-sm"}
       // exactOptionalPropertyTypes — only forward the ref when we
       // have one, don't pass `undefined` explicitly.
@@ -472,27 +495,23 @@ function NavigateConfirmDialog({
       >
         {state?.isStreaming === true && (
           <p className="rounded border border-amber-700/50 bg-amber-900/20 px-2 py-1.5 text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
-            The agent is currently running. Navigating will abort the in-progress turn.
+            {t("sessions.navigate.streamingWarning")}
           </p>
         )}
         {showAbandonOptions ? (
           <>
-            <p className="text-neutral-400">
-              You&rsquo;re leaving the current branch behind. The tip stays on the tree (you can
-              navigate back to it any time), but you can also bookmark + summarize it before moving
-              on.
-            </p>
+            <p className="text-neutral-400">{t("sessions.navigate.abandonExplanation")}</p>
             <label className="flex flex-col gap-1">
               <span className="text-neutral-500">
-                Label for the abandoned branch tip{" "}
-                <span className="text-neutral-600">(optional)</span>
+                {t("sessions.navigate.labelLabel")}
+                <span className="text-neutral-600">{t("common.optionalParenthetical")}</span>
               </span>
               <input
                 ref={labelInputRef}
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g. wrong-approach"
+                placeholder={t("sessions.navigate.labelPlaceholder")}
                 maxLength={200}
                 className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-neutral-100 outline-none focus:border-neutral-500"
               />
@@ -505,28 +524,29 @@ function NavigateConfirmDialog({
                 className="mt-0.5 h-3 w-3"
               />
               <span className="flex-1 text-neutral-300">
-                Have pi write a <code className="font-mono text-[11px]">branch_summary</code> entry
-                capturing what this branch did. Costs one extra LLM call.
+                {t("sessions.navigate.summarizePrefix")}
+                <code className="font-mono text-[11px]">branch_summary</code>
+                {t("sessions.navigate.summarizeSuffix")}
               </span>
             </label>
             {summarize && (
               <label className="flex flex-col gap-1">
                 <span className="text-neutral-500">
-                  Custom summarizer instructions{" "}
-                  <span className="text-neutral-600">(optional)</span>
+                  {t("sessions.navigate.customInstructionsLabel")}
+                  <span className="text-neutral-600">{t("common.optionalParenthetical")}</span>
                 </span>
                 <textarea
                   value={customInstructions}
                   onChange={(e) => setCustomInstructions(e.target.value)}
                   rows={3}
-                  placeholder="e.g. Focus on what files were changed and why"
+                  placeholder={t("sessions.navigate.customInstructionsPlaceholder")}
                   className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-[11px] text-neutral-100 outline-none focus:border-neutral-500"
                 />
               </label>
             )}
           </>
         ) : (
-          <p className="text-neutral-400">Confirm navigation?</p>
+          <p className="text-neutral-400">{t("sessions.navigate.confirm")}</p>
         )}
         <footer className="flex justify-end gap-2 pt-1">
           <button
@@ -534,7 +554,7 @@ function NavigateConfirmDialog({
             onClick={onCancel}
             className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
@@ -544,7 +564,9 @@ function NavigateConfirmDialog({
                 : "bg-neutral-100 text-neutral-900 hover:bg-white"
             }`}
           >
-            {state?.isStreaming === true ? "Abort & navigate" : "Navigate"}
+            {state?.isStreaming === true
+              ? t("sessions.navigate.abortAndNavigate")
+              : t("sessions.navigate.navigate")}
           </button>
         </footer>
       </form>
@@ -576,12 +598,14 @@ function TreeRow({
   onNavigate: () => void;
   onFork: () => void;
 }) {
+  const t = useT();
   const indent =
     Math.min(node.depth, MAX_INDENT_DEPTH) * INDENT_PX +
     Math.min(node.branchLevel, MAX_BRANCH_LEVEL) * BRANCH_OFFSET_PX;
   const isUserMessage = node.type === "message" && node.role === "user";
   const dim = !node.onActivePath;
   const labelText = entryTypeLabel(node);
+  const labelKey = ENTRY_LABEL_KEYS[labelText];
   return (
     // min-w-0 on the wrapper so flex children inside (the row's
     // content column with `truncate`) actually shrink below their
@@ -617,7 +641,7 @@ function TreeRow({
               onClick={onNavigate}
               disabled={disabled}
               className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-100 disabled:opacity-40"
-              title="Navigate the session leaf to this entry"
+              title={t("sessions.tree.navigateTooltip")}
             >
               <Navigation size={11} />
             </button>
@@ -631,7 +655,7 @@ function TreeRow({
               onClick={onFork}
               disabled={disabled}
               className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-emerald-300 disabled:opacity-40 light:hover:text-emerald-700"
-              title="Fork BEFORE this message — opens a new session with the message text loaded into the input for editing."
+              title={t("sessions.tree.forkTooltip")}
             >
               <GitBranch size={11} />
             </button>
@@ -643,7 +667,9 @@ function TreeRow({
           onClick={onNavigate}
           disabled={disabled || node.isLeaf}
           className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left disabled:cursor-default"
-          title={node.isLeaf ? "Current leaf" : "Navigate the session leaf to this entry"}
+          title={
+            node.isLeaf ? t("sessions.tree.currentLeafTooltip") : t("sessions.tree.navigateTooltip")
+          }
         >
           <div className="flex flex-wrap items-center gap-1.5">
             <span
@@ -659,7 +685,7 @@ function TreeRow({
                         : "bg-neutral-800 text-neutral-400"
               }`}
             >
-              {labelText}
+              {labelKey !== undefined ? t(labelKey) : labelText}
             </span>
             {node.isBranchHead && (
               <span
@@ -668,9 +694,9 @@ function TreeRow({
                   background: `${branchAccent(node.branchLevel)}33`,
                   color: branchAccent(node.branchLevel),
                 }}
-                title="First entry of a divergent branch"
+                title={t("sessions.tree.branchHeadTooltip")}
               >
-                branch {node.branchLevel}
+                {t("sessions.tree.branchBadge", { level: node.branchLevel })}
               </span>
             )}
             {node.label !== undefined && node.label.length > 0 && (
@@ -680,13 +706,13 @@ function TreeRow({
             )}
             {node.isLeaf && (
               <span className="rounded bg-emerald-900/40 px-1.5 py-0.5 text-[9px] text-emerald-300 light:bg-emerald-100 light:text-emerald-800">
-                leaf
+                {t("sessions.tree.leafBadge")}
               </span>
             )}
             {node.siblings > 1 && (
               <span
                 className="text-[9px] text-amber-400 light:text-amber-700"
-                title={`${node.siblings} branches diverge from this point`}
+                title={t.plural("sessions.tree.siblingsTooltip", node.siblings)}
               >
                 ⑂ {node.siblings}
               </span>
@@ -1130,6 +1156,7 @@ function SessionTreeGraph({
    */
   onForkAfterTurn: (lastEntryId: string) => void;
 }) {
+  const t = useT();
   const turns = useMemo(() => buildTurns(tree), [tree]);
   const layout = useMemo(() => {
     if (turns.length === 0) return { width: 0, height: 0 };
@@ -1143,7 +1170,7 @@ function SessionTreeGraph({
   if (turns.length === 0) {
     return (
       <div className="px-4 py-6 text-center text-xs italic text-neutral-500">
-        No turns to render.
+        {t("sessions.graph.noTurns")}
       </div>
     );
   }
@@ -1254,7 +1281,9 @@ function GraphNode({
   onNavigate: () => void;
   onForkAfterTurn: () => void;
 }) {
+  const t = useT();
   const dim = !turn.isOnActivePath;
+  const roleKey = ENTRY_LABEL_KEYS[turn.roleLabel];
   const borderClass = turn.isLeafTurn
     ? "border-emerald-700/70 bg-emerald-900/15"
     : turn.isOnActivePath
@@ -1276,7 +1305,11 @@ function GraphNode({
         onClick={onNavigate}
         disabled={disabled || turn.isLeafTurn}
         className="flex h-full w-full flex-col items-stretch gap-1 px-2 py-1.5 text-left disabled:cursor-default"
-        title={turn.isLeafTurn ? "Current leaf turn" : "Navigate to this turn"}
+        title={
+          turn.isLeafTurn
+            ? t("sessions.graph.currentLeafTooltip")
+            : t("sessions.graph.navigateTooltip")
+        }
       >
         <div className="flex items-center gap-1.5">
           <span
@@ -1290,17 +1323,17 @@ function GraphNode({
                     : "bg-neutral-800 text-neutral-400"
             }`}
           >
-            {turn.roleLabel}
+            {roleKey !== undefined ? t(roleKey) : turn.roleLabel}
           </span>
           {turn.isLeafTurn && (
             <span className="rounded bg-emerald-900/40 px-1.5 py-0.5 text-[9px] text-emerald-300 light:bg-emerald-100 light:text-emerald-800">
-              leaf
+              {t("sessions.tree.leafBadge")}
             </span>
           )}
           {turn.hasMultipleChildren && (
             <span
               className="text-[9px] text-amber-400 light:text-amber-700"
-              title={`${turn.childCount} branches diverge from here`}
+              title={t.plural("sessions.graph.childBranchesTooltip", turn.childCount)}
             >
               ⑂ {turn.childCount}
             </span>
@@ -1320,28 +1353,34 @@ function GraphNode({
             }}
             disabled={disabled}
             className="ml-auto rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-emerald-300 disabled:opacity-40 light:hover:text-emerald-700"
-            title="Fork AFTER this turn — opens a new session that includes this turn's full output, ready for the next prompt."
+            title={t("sessions.graph.forkTooltip")}
           >
             <GitBranch size={11} />
           </button>
         </div>
         <p className="line-clamp-2 flex-1 text-[11px] text-neutral-200">
-          {turn.preview.length > 0 ? turn.preview : <em className="text-neutral-500">(no text)</em>}
+          {turn.preview.length > 0 ? (
+            turn.preview
+          ) : (
+            <em className="text-neutral-500">{t("sessions.graph.noText")}</em>
+          )}
         </p>
         <div className="flex items-center gap-2 text-[9px] text-neutral-500">
           {turn.insideCounts.assistant > 0 && (
-            <span title="Assistant messages within this turn">{turn.insideCounts.assistant}a</span>
+            <span title={t("sessions.graph.assistantCountTooltip")}>
+              {turn.insideCounts.assistant}a
+            </span>
           )}
           {turn.insideCounts.tool > 0 && (
-            <span title="Tool results within this turn">{turn.insideCounts.tool}t</span>
+            <span title={t("sessions.graph.toolCountTooltip")}>{turn.insideCounts.tool}t</span>
           )}
           {turn.insideCounts.thinking > 0 && (
-            <span title="Thinking blocks">{turn.insideCounts.thinking}th</span>
+            <span title={t("sessions.graph.thinkingCountTooltip")}>
+              {turn.insideCounts.thinking}th
+            </span>
           )}
           {turn.insideCounts.meta > 0 && (
-            <span title="Meta entries (model_change, branch_summary, etc.)">
-              {turn.insideCounts.meta}m
-            </span>
+            <span title={t("sessions.graph.metaCountTooltip")}>{turn.insideCounts.meta}m</span>
           )}
           <span className="ml-auto">{new Date(turn.timestamp).toLocaleTimeString()}</span>
         </div>

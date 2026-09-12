@@ -1,5 +1,6 @@
 import { ApiError, UNAUTHORIZED_EVENT } from "./api-client";
 import { clearStoredToken, getStoredToken } from "./auth-client";
+import { t } from "../i18n";
 
 /**
  * Minimal SSE reader that uses fetch + ReadableStream so we can send the
@@ -204,7 +205,7 @@ export async function streamSSE<T extends { type: string }>(
       return;
     }
     const delayMs = backoffDelay(attempt);
-    opts.onReconnect?.({ attempt, delayMs, reason: "server closed stream" });
+    opts.onReconnect?.({ attempt, delayMs, reason: t("errors.sse.serverClosedStream") });
     try {
       await abortableSleep(delayMs, opts.signal);
     } catch {

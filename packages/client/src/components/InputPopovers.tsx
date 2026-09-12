@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { api, ApiError } from "../lib/api-client";
+import { useT } from "../i18n";
 import {
   LIVE_STATUSES,
   selectProcesses,
@@ -44,6 +45,7 @@ function PopoverShell({
   title: string;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,7 +91,7 @@ function PopoverShell({
           type="button"
           onClick={onClose}
           className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200 light:hover:bg-neutral-100 light:hover:text-neutral-700"
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           <X size={12} />
         </button>
@@ -136,6 +138,7 @@ export function ProcessesPopover({
   anchorRef: React.RefObject<HTMLElement | null>;
   sessionId: string | undefined;
 }) {
+  const t = useT();
   const processes = useProcessesStore((s) => selectProcesses(s, sessionId));
   // Show live processes at top, finished after a divider. Most of
   // the time only running matters; we keep finished accessible so a
@@ -150,7 +153,7 @@ export function ProcessesPopover({
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!open || live.length === 0) return;
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    const id = window.setInterval(() => setTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [open, live.length]);
 
@@ -175,10 +178,12 @@ export function ProcessesPopover({
       open={open}
       onClose={onClose}
       anchorRef={anchorRef}
-      title={`Processes (${live.length} running)`}
+      title={t("chatInput.processes.popoverTitle", { count: live.length })}
     >
       {processes.length === 0 ? (
-        <p className="px-3 py-3 text-xs italic text-neutral-500">No processes.</p>
+        <p className="px-3 py-3 text-xs italic text-neutral-500">
+          {t("chatInput.processes.empty")}
+        </p>
       ) : (
         <ul className="divide-y divide-neutral-800 light:divide-neutral-200">
           {live.map((p) => (
@@ -191,7 +196,7 @@ export function ProcessesPopover({
           ))}
           {finished.length > 0 && live.length > 0 && (
             <li className="bg-neutral-950 px-3 py-1 text-[10px] uppercase tracking-wider text-neutral-500 light:bg-neutral-100">
-              Finished
+              {t("chatInput.processes.finished")}
             </li>
           )}
           {finished.map((p) => (
@@ -212,6 +217,7 @@ function ProcessRow({
   busy: boolean;
   onKill?: () => void;
 }) {
+  const t = useT();
   const isLive = LIVE_STATUSES.has(process.status);
   return (
     <li className="flex items-start justify-between gap-2 px-3 py-2 text-xs">
@@ -229,7 +235,7 @@ function ProcessRow({
           {process.exitCode !== null && (
             <>
               <span>·</span>
-              <span>exit {process.exitCode}</span>
+              <span>{t("chatInput.processes.exitCode", { code: process.exitCode })}</span>
             </>
           )}
         </div>
@@ -240,9 +246,9 @@ function ProcessRow({
           onClick={onKill}
           disabled={busy}
           className="shrink-0 rounded border border-red-800 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-900/40 disabled:opacity-50 light:border-red-300 light:text-red-700 light:hover:bg-red-50"
-          title="Kill this process"
+          title={t("chatInput.processes.killTitle")}
         >
-          {busy ? "…" : "Kill"}
+          {busy ? "…" : t("chatInput.processes.kill")}
         </button>
       )}
     </li>
@@ -282,13 +288,16 @@ export function TodosPopover({
   anchorRef: React.RefObject<HTMLElement | null>;
   sessionId: string | undefined;
 }) {
+  const t = useT();
   const todoState = useTodoStore((s) => selectTodoState(s, sessionId));
   // Skip soft-deleted tombstones in the popover — they exist in
   // state for branch-replay consistency but aren't useful at-a-
   // glance. The full panel keeps them visible behind a toggle.
-  const visible = todoState.tasks.filter((t) => t.status !== "deleted");
-  const completed = visible.filter((t) => t.status === "completed").length;
-  const inProgress = visible.filter((t) => t.status === "in_progress").length;
+  const visible = todoState.tasks.filter((task) => task.status !== "deleted");
+  const completed = visible.filter((task) => task.status === "completed").length;
+  const inProgress = visible.filter((task) => task.status === "in_progress").length;
+  const inProgressNote =
+    inProgress > 0 ? t("chatInput.todos.inProgressDot", { count: inProgress }) : "";
 
   return (
     <PopoverShell
@@ -297,25 +306,29 @@ export function TodosPopover({
       anchorRef={anchorRef}
       title={
         visible.length === 0
-          ? "Tasks"
-          : `Tasks · ${completed}/${visible.length}${inProgress > 0 ? ` · ${inProgress} in progress` : ""}`
+          ? t("chatInput.todos.popoverTitle")
+          : t("chatInput.todos.popoverTitleCount", {
+              done: completed,
+              total: visible.length,
+              inProgress: inProgressNote,
+            })
       }
     >
       {visible.length === 0 ? (
-        <p className="px-3 py-3 text-xs italic text-neutral-500">No tasks.</p>
+        <p className="px-3 py-3 text-xs italic text-neutral-500">{t("chatInput.todos.empty")}</p>
       ) : (
         <ul className="divide-y divide-neutral-800 light:divide-neutral-200">
-          {visible.map((t) => (
-            <li key={t.id} className="flex items-start gap-2 px-3 py-2 text-xs">
-              <TaskStatusGlyph status={t.status} />
+          {visible.map((task) => (
+            <li key={task.id} className="flex items-start gap-2 px-3 py-2 text-xs">
+              <TaskStatusGlyph status={task.status} />
               <span
                 className={`min-w-0 flex-1 ${
-                  t.status === "completed"
+                  task.status === "completed"
                     ? "text-neutral-500 line-through light:text-neutral-400"
                     : "text-neutral-200 light:text-neutral-800"
                 }`}
               >
-                {t.subject}
+                {task.subject}
               </span>
             </li>
           ))}
