@@ -10,6 +10,7 @@ import { EMPTY_SESSIONS, useSessionStore } from "../store/session-store";
 import { useProjectStore } from "../store/project-store";
 import { ConfirmDialog } from "./Modal";
 import { useT } from "../i18n";
+import { localizeSessionName } from "../lib/session-name";
 import type { UnifiedSession } from "../lib/api-client";
 
 interface Props {
@@ -403,11 +404,15 @@ function SessionRow(props: SessionRowProps) {
     onDeleteClick,
   } = props;
   const t = useT();
+  // `name` stays raw so the inline rename editor edits the stored value;
+  // only the rendered label maps the SDK's generic default to localized copy.
+  const name = s.name;
   const label =
-    s.name ??
-    (s.firstMessage.length > 0
-      ? s.firstMessage.slice(0, 40)
-      : t("projects.sessionRow.untitled", { id: s.sessionId.slice(0, 6) }));
+    name !== undefined
+      ? localizeSessionName(name, t)
+      : s.firstMessage.length > 0
+        ? s.firstMessage.slice(0, 40)
+        : t("projects.sessionRow.untitled", { id: s.sessionId.slice(0, 6) });
   return (
     <div
       // Multiselect styling matches the file-tree's selection cue:
@@ -465,7 +470,7 @@ function SessionRow(props: SessionRowProps) {
             }
             onSelect(s.sessionId);
           }}
-          onDoubleClick={() => onStartRename(s.sessionId, label)}
+          onDoubleClick={() => onStartRename(s.sessionId, name ?? label)}
           className="flex-1 truncate text-left"
           title={t("projects.sessionRow.rowTitle", { id: s.sessionId })}
         >

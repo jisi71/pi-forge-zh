@@ -240,6 +240,10 @@ export const common: DeepPartial<EnMessages["common"]> = {
   signOut: "退出登录",
   anonymous: "匿名",
 
+  // pi SDK 生成的默认会话标题（见 lib/session-name.ts）
+  newSession: "新会话",
+  newSessionNumbered: "新会话（{count}）",
+
   // 数量 ---------------------------------------------------------------
   itemCount: { other: "{count} 项" },
   fileCount: { other: "{count} 个文件" },
