@@ -9,6 +9,21 @@
  */
 
 export const settings = {
+  /**
+   * `AuthStatus.source` from the pi SDK's auth-storage (a closed union:
+   * "stored" | "runtime" | "environment" | "fallback" | "models_json_key" |
+   * "models_json_command"). English keeps the raw SDK token; other locales
+   * describe where the credential comes from.
+   */
+  credentialSource: {
+    stored: "stored",
+    runtime: "runtime",
+    environment: "environment",
+    fallback: "fallback",
+    modelsJsonKey: "models.json key",
+    modelsJsonCommand: "models.json command",
+  },
+
   panel: {
     title: "Settings",
     apiDocs: "API Docs ↗",
