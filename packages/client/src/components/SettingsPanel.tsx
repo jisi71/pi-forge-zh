@@ -26,6 +26,11 @@ import { useUiStore } from "../store/ui-store";
 import { EMPTY_STATUS, useMcpStore } from "../store/mcp-store";
 import { useQuickActionsStore } from "../store/quick-actions-store";
 import { THEME_DEFS, useThemeStore, type ThemeId } from "../lib/theme";
+// `useT` is the reactive translator used inside components. `translate`
+// (the module-level singleton) covers the few non-component helpers in
+// this file — they cannot call hooks, but they still need localized text.
+import { t as translate, useT, type TFunction, type TranslateKey } from "../i18n";
+import { LanguagePicker } from "./LanguagePicker";
 import { createClientId } from "../lib/client-id";
 import { getStoredToken } from "../lib/auth-client";
 import { WebhooksTab } from "./WebhooksTab";
@@ -75,6 +80,7 @@ interface Props {
  * cross-mount caching, since config is small and rarely changes.
  */
 export function SettingsPanel({ onClose, initialTab }: Props) {
+  const t = useT();
   const minimal = useUiConfigStore((s) => s.minimal);
   // Minimal mode hides Providers + Agent (those are configured at
   // the deploy level when MINIMAL_UI is set), so the default tab
@@ -167,41 +173,41 @@ export function SettingsPanel({ onClose, initialTab }: Props) {
               fixed to the right via `gap-3` on the header. */}
           <div className="-mx-1 min-w-0 flex-1 overflow-x-auto px-1">
             <div className="flex min-w-max items-center gap-1">
-              {visibleTabs.map((t) => (
+              {visibleTabs.map((tabId) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={tabId}
+                  onClick={() => setTab(tabId)}
                   className={`shrink-0 whitespace-nowrap rounded px-3 py-1 text-xs ${
-                    tab === t
+                    tab === tabId
                       ? "bg-neutral-800 text-neutral-100"
                       : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200"
                   }`}
                 >
-                  {t === "providers"
-                    ? "Providers"
-                    : t === "agent"
-                      ? "Agent"
-                      : t === "mcp"
-                        ? "MCP"
-                        : t === "tools"
-                          ? "Tools"
-                          : t === "sandbox"
-                            ? "Sandbox"
-                            : t === "skills"
-                              ? "Skills"
-                              : t === "prompts"
-                                ? "Prompts"
-                                : t === "systemPrompt"
-                                  ? "System Prompt"
-                                  : t === "quickActions"
-                                    ? "Quick Actions"
-                                    : t === "webhooks"
-                                      ? "Webhooks"
-                                      : t === "appearance"
-                                        ? "Appearance"
-                                        : t === "backup"
-                                          ? "Backup"
-                                          : "General"}
+                  {tabId === "providers"
+                    ? t("settings.panel.tabs.providers")
+                    : tabId === "agent"
+                      ? t("settings.panel.tabs.agent")
+                      : tabId === "mcp"
+                        ? t("settings.panel.tabs.mcp")
+                        : tabId === "tools"
+                          ? t("settings.panel.tabs.tools")
+                          : tabId === "sandbox"
+                            ? t("settings.panel.tabs.sandbox")
+                            : tabId === "skills"
+                              ? t("settings.panel.tabs.skills")
+                              : tabId === "prompts"
+                                ? t("settings.panel.tabs.prompts")
+                                : tabId === "systemPrompt"
+                                  ? t("settings.panel.tabs.systemPrompt")
+                                  : tabId === "quickActions"
+                                    ? t("settings.panel.tabs.quickActions")
+                                    : tabId === "webhooks"
+                                      ? t("settings.panel.tabs.webhooks")
+                                      : tabId === "appearance"
+                                        ? t("settings.panel.tabs.appearance")
+                                        : tabId === "backup"
+                                          ? t("settings.panel.tabs.backup")
+                                          : t("settings.panel.tabs.general")}
                 </button>
               ))}
             </div>
@@ -225,16 +231,16 @@ export function SettingsPanel({ onClose, initialTab }: Props) {
                 window.open(url, "_blank", "noopener,noreferrer");
               }}
               className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
-              title="Open the OpenAPI / Swagger UI in a new tab. Carries your auth token automatically."
+              title={t("settings.panel.apiDocsTooltip")}
             >
-              API Docs ↗
+              {t("settings.panel.apiDocs")}
             </button>
             <button
               onClick={onClose}
               className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
-              title="Close (Esc)"
+              title={t("settings.panel.closeTooltip")}
             >
-              Close
+              {t("common.close")}
             </button>
           </div>
         </header>
@@ -272,6 +278,7 @@ function errorCode(err: unknown): string {
 // ---------------- Providers tab ----------------
 
 function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const [providers, setProviders] = useState<ProvidersListing | undefined>(undefined);
   const [auth, setAuth] = useState<AuthSummary | undefined>(undefined);
   const [editingProvider, setEditingProvider] = useState<string | undefined>(undefined);
@@ -285,7 +292,7 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
       setProviders(p);
       setAuth(a);
     } catch (err) {
-      onError(`Failed to load providers: ${errorCode(err)}`);
+      onError(t("settings.errors.loadProviders", { code: errorCode(err) }));
     }
   };
 
@@ -303,37 +310,38 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
       setKeyDraft("");
       await refresh();
     } catch (err) {
-      onError(`Save key failed: ${errorCode(err)}`);
+      onError(t("settings.errors.saveKey", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   const removeKey = async (provider: string): Promise<void> => {
-    if (!confirm(`Remove the stored key for "${provider}"?`)) return;
+    if (!confirm(t("settings.providers.confirmRemoveKey", { provider }))) return;
     setBusy(true);
     try {
       await api.removeApiKey(provider);
       await refresh();
     } catch (err) {
-      onError(`Remove key failed: ${errorCode(err)}`);
+      onError(t("settings.errors.removeKey", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   if (providers === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading providers…</p>;
+    return <p className="text-xs italic text-neutral-500">{t("settings.providers.loading")}</p>;
   }
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-neutral-500">
-        Built-in providers and anything in <code className="font-mono">models.json</code>. Stored
-        API keys are presence-only — actual values are never sent to the browser.
+        {t("settings.providers.introPrefix")}
+        <code className="font-mono">models.json</code>
+        {t("settings.providers.introSuffix")}
       </p>
       {providers.providers.length === 0 && (
-        <p className="text-xs italic text-neutral-500">No providers configured.</p>
+        <p className="text-xs italic text-neutral-500">{t("settings.providers.empty")}</p>
       )}
       {providers.providers.map((p) => {
         const presence = auth?.providers[p.provider];
@@ -351,10 +359,14 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                       : "bg-neutral-800 text-neutral-500"
                   }`}
                 >
-                  {configured ? "key set" : "no key"}
+                  {configured ? t("settings.providers.keySet") : t("settings.providers.noKey")}
                 </span>
                 {presence?.source !== undefined && (
-                  <span className="text-[10px] text-neutral-500">via {presence.source}</span>
+                  <span className="text-[10px] text-neutral-500">
+                    {t("settings.providers.viaSource", {
+                      source: credentialSourceLabel(presence.source, t),
+                    })}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-1 text-xs">
@@ -366,7 +378,9 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                     }}
                     className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
                   >
-                    {configured ? "Replace key" : "Add key"}
+                    {configured
+                      ? t("settings.providers.replaceKey")
+                      : t("settings.providers.addKey")}
                   </button>
                 )}
                 {configured && !editing && (
@@ -375,7 +389,7 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                     disabled={busy}
                     className="rounded border border-red-700/50 px-2 py-0.5 text-red-300 hover:bg-red-900/20 disabled:opacity-50"
                   >
-                    Remove
+                    {t("common.remove")}
                   </button>
                 )}
               </div>
@@ -386,7 +400,7 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                   type="password"
                   value={keyDraft}
                   onChange={(e) => setKeyDraft(e.target.value)}
-                  placeholder="Paste API key"
+                  placeholder={t("settings.providers.keyPlaceholder")}
                   autoFocus
                   className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-neutral-500"
                 />
@@ -395,7 +409,7 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                   disabled={busy || keyDraft.trim().length === 0}
                   className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-900 disabled:opacity-50"
                 >
-                  Save
+                  {t("common.save")}
                 </button>
                 <button
                   onClick={() => {
@@ -404,13 +418,13 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                   }}
                   className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             )}
             <details className="mt-2">
               <summary className="cursor-pointer text-[11px] text-neutral-500 light:text-neutral-600">
-                {p.models.length} model{p.models.length === 1 ? "" : "s"}
+                {t.plural("settings.providers.modelCount", p.models.length)}
               </summary>
               <ul className="mt-1 space-y-0.5 text-[11px]">
                 {p.models.map((m) => (
@@ -428,7 +442,9 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                       {m.name}
                     </span>
                     <span className="text-neutral-600 light:text-neutral-400">
-                      ctx {Math.round(m.contextWindow / 1000)}k
+                      {t("settings.providers.contextWindow", {
+                        count: Math.round(m.contextWindow / 1000),
+                      })}
                     </span>
                   </li>
                 ))}
@@ -443,6 +459,7 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
 }
 
 function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   // Raw-JSON editor for `models.json`. The dev plan calls for typed
   // forms per provider type (vLLM, LiteLLM, Ollama, OpenAI-compatible);
   // that's deferred to a follow-up. The raw editor is deliberately
@@ -459,7 +476,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
       const m = await api.getModelsJson();
       setText(JSON.stringify(m, null, 2));
     } catch (err) {
-      onError(`Load models.json failed: ${errorCode(err)}`);
+      onError(t("settings.errors.loadModelsJson", { code: errorCode(err) }));
     }
   };
   const save = async (): Promise<void> => {
@@ -470,7 +487,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
     } catch {
       // Surface as a typed error so the user sees what went wrong;
       // the JSON parser's exact message isn't useful for the operator.
-      onError("models.json: invalid JSON");
+      onError(t("settings.providers.customInvalidJson"));
       return;
     }
     if (
@@ -479,7 +496,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
       typeof (parsed as { providers?: unknown }).providers !== "object" ||
       (parsed as { providers?: unknown }).providers === null
     ) {
-      onError('models.json: top-level must be { "providers": { ... } }');
+      onError(t("settings.providers.customInvalidTopLevel"));
       return;
     }
     setBusy(true);
@@ -489,7 +506,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
       onError(undefined);
       setSavedAt(Date.now());
     } catch (err) {
-      onError(`Save failed: ${errorCode(err)}`);
+      onError(t("settings.errors.saveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -502,14 +519,11 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
           if (text === undefined) void load();
         }}
       >
-        Custom providers (models.json)
+        {t("settings.providers.customSummary")}
       </summary>
-      <p className="mt-1 text-[11px] text-neutral-500">
-        Raw JSON editor. Add vLLM / LiteLLM / Ollama / OpenAI-compatible endpoints here. The SDK
-        validates on next session creation.
-      </p>
+      <p className="mt-1 text-[11px] text-neutral-500">{t("settings.providers.customHint")}</p>
       {text === undefined ? (
-        <p className="mt-2 text-xs italic text-neutral-500">Loading…</p>
+        <p className="mt-2 text-xs italic text-neutral-500">{t("common.loading")}</p>
       ) : (
         <>
           <textarea
@@ -522,7 +536,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
           <div className="mt-2 flex items-center justify-end gap-2 text-xs">
             {savedAt !== undefined && (
               <span className="text-emerald-400 light:text-emerald-700" aria-live="polite">
-                Saved
+                {t("common.saved")}
               </span>
             )}
             <button
@@ -530,14 +544,14 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
               disabled={busy}
               className="rounded border border-neutral-700 px-2 py-1 text-neutral-300"
             >
-              Reload
+              {t("common.reload")}
             </button>
             <button
               onClick={() => void save()}
               disabled={busy}
               className="rounded bg-neutral-100 px-3 py-1 font-medium text-neutral-900 disabled:opacity-50"
             >
-              {busy ? "Saving…" : "Save"}
+              {busy ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </>
@@ -549,6 +563,7 @@ function CustomProvidersJson({ onError }: { onError: (msg: string | undefined) =
 // ---------------- Agent tab ----------------
 
 function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const [settings, setSettings] = useState<Record<string, unknown> | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"form" | "json">("form");
@@ -559,7 +574,7 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
       const s = await api.getSettings();
       setSettings(s);
     } catch (err) {
-      onError(`Failed to load settings: ${errorCode(err)}`);
+      onError(t("settings.errors.loadSettings", { code: errorCode(err) }));
     }
   };
 
@@ -580,14 +595,14 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
       const next = await api.updateSettings(patch);
       setSettings(next);
     } catch (err) {
-      onError(`Save failed: ${errorCode(err)}`);
+      onError(t("settings.errors.saveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   if (settings === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading settings…</p>;
+    return <p className="text-xs italic text-neutral-500">{t("settings.agent.loading")}</p>;
   }
 
   if (mode === "json") {
@@ -607,7 +622,7 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
             setSettings(fresh);
             onError(undefined);
           } catch (err) {
-            onError(`Save failed: ${errorCode(err)}`);
+            onError(t("settings.errors.saveFailed", { code: errorCode(err) }));
             throw err;
           } finally {
             setBusy(false);
@@ -623,19 +638,19 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-neutral-500">
-          Defaults for new sessions. The form covers common keys; switch to JSON to edit anything
-          the SDK accepts.
-        </p>
+        <p className="text-xs text-neutral-500">{t("settings.agent.intro")}</p>
         <button
           onClick={() => setMode("json")}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
         >
-          Edit as JSON
+          {t("settings.agent.editAsJson")}
         </button>
       </div>
 
-      <Field label="Default provider" hint="e.g. anthropic, openai, google, custom">
+      <Field
+        label={t("settings.agent.defaultProvider")}
+        hint={t("settings.agent.defaultProviderHint")}
+      >
         <TextSetting
           value={get("defaultProvider")}
           onSave={(v) => update({ defaultProvider: v.length === 0 ? null : v })}
@@ -643,7 +658,7 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
         />
       </Field>
 
-      <Field label="Default model" hint="model id from the chosen provider">
+      <Field label={t("settings.agent.defaultModel")} hint={t("settings.agent.defaultModelHint")}>
         <TextSetting
           value={get("defaultModel")}
           onSave={(v) => update({ defaultModel: v.length === 0 ? null : v })}
@@ -651,7 +666,7 @@ function AgentTab({ onError }: { onError: (msg: string | undefined) => void }) {
         />
       </Field>
 
-      <Field label="Thinking level" hint="off, low, medium, high (provider-dependent)">
+      <Field label={t("settings.agent.thinkingLevel")} hint={t("settings.agent.thinkingLevelHint")}>
         <SelectSetting
           value={get("defaultThinkingLevel")}
           options={["", "off", "low", "medium", "high"]}
@@ -676,6 +691,7 @@ function SettingsJsonEditor({
   busy: boolean;
   onError: (msg: string | undefined) => void;
 }) {
+  const t = useT();
   const [text, setText] = useState(() => JSON.stringify(initial, null, 2));
   const [savedAt, setSavedAt] = useState<number | undefined>(undefined);
   useSavedFlash(savedAt, () => setSavedAt(undefined));
@@ -686,11 +702,11 @@ function SettingsJsonEditor({
       parsed = JSON.parse(text);
     } catch {
       // Surface as a typed error; raw parser message isn't actionable.
-      onError("settings.json: invalid JSON");
+      onError(t("settings.jsonEditor.invalidJson"));
       return;
     }
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      onError("settings.json: top-level must be an object");
+      onError(t("settings.jsonEditor.invalidTopLevel"));
       return;
     }
     setSavedAt(undefined);
@@ -706,15 +722,17 @@ function SettingsJsonEditor({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-neutral-500">
-          Raw <code className="font-mono">settings.json</code>. Keys removed here are deleted on
-          save (mapped to <code className="font-mono">null</code> in the merge patch). The SDK
-          validates on next session creation.
+          {t("settings.jsonEditor.introPrefix")}
+          <code className="font-mono">settings.json</code>
+          {t("settings.jsonEditor.introMid")}
+          <code className="font-mono">null</code>
+          {t("settings.jsonEditor.introSuffix")}
         </p>
         <button
           onClick={onSwitchToForm}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
         >
-          Back to form
+          {t("settings.jsonEditor.backToForm")}
         </button>
       </div>
       <textarea
@@ -727,7 +745,7 @@ function SettingsJsonEditor({
       <div className="flex items-center justify-end gap-2 text-xs">
         {savedAt !== undefined && (
           <span className="text-emerald-400 light:text-emerald-700" aria-live="polite">
-            Saved
+            {t("common.saved")}
           </span>
         )}
         <button
@@ -735,14 +753,14 @@ function SettingsJsonEditor({
           disabled={busy}
           className="rounded border border-neutral-700 px-2 py-1 text-neutral-300"
         >
-          Reset
+          {t("common.reset")}
         </button>
         <button
           onClick={() => void save()}
           disabled={busy}
           className="rounded bg-neutral-100 px-3 py-1 font-medium text-neutral-900 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </div>
@@ -791,6 +809,7 @@ function TextSetting({
   onSave: (v: string) => void | Promise<void>;
   disabled: boolean;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   const dirty = draft !== value;
@@ -807,7 +826,7 @@ function TextSetting({
         disabled={disabled || !dirty}
         className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-900 disabled:opacity-50"
       >
-        Save
+        {t("common.save")}
       </button>
     </div>
   );
@@ -824,6 +843,7 @@ function SelectSetting({
   onSave: (v: string) => void | Promise<void>;
   disabled: boolean;
 }) {
+  const t = useT();
   return (
     <select
       value={value}
@@ -833,7 +853,7 @@ function SelectSetting({
     >
       {options.map((o) => (
         <option key={o} value={o}>
-          {o.length === 0 ? "(unset)" : o}
+          {o.length === 0 ? t("settings.fields.unset") : o}
         </option>
       ))}
     </select>
@@ -844,6 +864,7 @@ function SelectSetting({
 
 function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) {
   const appName = useUiConfigStore((s) => s.appName);
+  const t = useT();
   const project = useActiveProject();
   const projects = useProjectStore((s) => s.projects);
   const bumpSkillsRefresh = useUiStore((s) => s.bumpSkillsRefresh);
@@ -877,7 +898,7 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
       setDiagnostics(diags);
       setAllOverrides(overrides.projects);
     } catch (err) {
-      onError(`Failed to load skills: ${errorCode(err)}`);
+      onError(t("settings.errors.loadSkills", { code: errorCode(err) }));
     }
   };
 
@@ -887,15 +908,15 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
   }, [project?.id]);
 
   if (project === undefined) {
-    return (
-      <p className="text-xs italic text-neutral-500">
-        Pick a project from the header to manage its skills.
-      </p>
-    );
+    return <p className="text-xs italic text-neutral-500">{t("settings.skills.pickProject")}</p>;
   }
 
   if (skills === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading skills for {project.name}…</p>;
+    return (
+      <p className="text-xs italic text-neutral-500">
+        {t("settings.skills.loading", { name: project.name })}
+      </p>
+    );
   }
 
   const toggleGlobal = async (name: string, next: boolean): Promise<void> => {
@@ -905,7 +926,7 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
       setSkills(updated);
       bumpSkillsRefresh();
     } catch (err) {
-      onError(`Toggle failed: ${errorCode(err)}`);
+      onError(t("settings.errors.toggleFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -930,7 +951,7 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
       await refresh();
       bumpSkillsRefresh();
     } catch (err) {
-      onError(`Override write failed: ${errorCode(err)}`);
+      onError(t("settings.errors.overrideWriteFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -951,20 +972,24 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
   return (
     <div className="space-y-2">
       <p className="text-xs text-neutral-500">
-        Skills discovered in <code className="font-mono">~/.pi/agent/skills/</code> and{" "}
-        <code className="font-mono">{project.path}/.pi/skills/</code>. The global toggle writes to
-        pi&apos;s <code className="font-mono">settings.skills</code>; per-project overrides write to
-        the {appName}-private file at{" "}
-        <code className="font-mono">{`\${FORGE_DATA_DIR}/skills-overrides.json`}</code>.
+        {t("settings.skills.introPrefix")}
+        <code className="font-mono">~/.pi/agent/skills/</code>
+        {t("settings.skills.introMid")}
+        <code className="font-mono">{project.path}/.pi/skills/</code>
+        {t("settings.skills.introMid2")}
+        <code className="font-mono">settings.skills</code>
+        {t("settings.skills.introMid3", { brand: appName })}
+        <code className="font-mono">{`\${FORGE_DATA_DIR}/skills-overrides.json`}</code>
+        {t("settings.skills.introSuffix")}
       </p>
       <div className="rounded border border-amber-700/40 bg-amber-900/10 px-3 py-2 text-[11px] text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
-        Skill changes apply to the <strong>next session</strong> you start in the affected project.
-        Live sessions keep the skill set they booted with — start a new session to use a freshly
-        enabled skill.
+        {t("settings.skills.warningPrefix")}
+        <strong>{t("settings.skills.warningStrong")}</strong>
+        {t("settings.skills.warningSuffix")}
       </div>
       {diagnostics.length > 0 && <SkillDiagnosticsBanner diagnostics={diagnostics} />}
       {skills.length === 0 && (
-        <p className="text-xs italic text-neutral-500">No skills found for this project.</p>
+        <p className="text-xs italic text-neutral-500">{t("settings.skills.empty")}</p>
       )}
       {skills.map((s) => {
         const key = `${s.source}:${s.name}`;
@@ -990,7 +1015,12 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
                 className={`mt-1.5 inline-block h-2.5 w-2.5 rounded-full ${
                   s.effective ? "bg-emerald-500" : "bg-neutral-700"
                 }`}
-                title={`Effective for ${project.name}: ${s.effective ? "enabled" : "disabled"}`}
+                title={t("settings.overrides.effectiveTitle", {
+                  name: project.name,
+                  state: s.effective
+                    ? t("settings.overrides.stateEnabled")
+                    : t("settings.overrides.stateDisabled"),
+                })}
               />
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center gap-2 text-sm">
@@ -1005,13 +1035,20 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
                           ? "bg-emerald-900/40 text-emerald-300 light:bg-emerald-100 light:text-emerald-800"
                           : "bg-red-900/40 text-red-300 light:bg-red-100 light:text-red-800"
                       }`}
-                      title={`Active project ('${project.name}') has an override`}
+                      title={t("settings.overrides.projectOverrideTitle", { name: project.name })}
                     >
-                      Project: {s.projectOverride}
+                      {t("settings.overrides.projectBadge", {
+                        state:
+                          s.projectOverride === "enabled"
+                            ? t("settings.overrides.stateEnabled")
+                            : t("settings.overrides.stateDisabled"),
+                      })}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400">{s.description || "(no description)"}</p>
+                <p className="text-xs text-neutral-400">
+                  {s.description || t("settings.overrides.noDescription")}
+                </p>
                 <p className="font-mono text-[10px] text-neutral-600">{s.filePath}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1 text-xs">
@@ -1023,16 +1060,22 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
                       ? "border-emerald-700/50 bg-emerald-900/20 text-emerald-300 light:border-emerald-300 light:bg-emerald-50 light:text-emerald-800"
                       : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
                   }`}
-                  title="Global enable in pi's settings.skills"
+                  title={t("settings.skills.globalToggleTitle")}
                 >
-                  Global: {s.enabled ? "enabled" : "disabled"}
+                  {t("settings.overrides.globalState", {
+                    state: s.enabled
+                      ? t("settings.overrides.stateEnabled")
+                      : t("settings.overrides.stateDisabled"),
+                  })}
                 </button>
                 <button
                   onClick={() => setExpanded((e) => ({ ...e, [key]: !isExpanded }))}
                   className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
-                  title="Show per-project overrides"
+                  title={t("settings.overrides.showTitle")}
                 >
-                  {isExpanded ? "▾ Overrides" : `▸ Overrides (${overrideRows.length})`}
+                  {isExpanded
+                    ? `▾ ${t("settings.overrides.name")}`
+                    : `▸ ${t("settings.overrides.name")} (${overrideRows.length})`}
                 </button>
               </div>
             </div>
@@ -1040,7 +1083,7 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
               <div className="border-t border-neutral-800 px-3 py-2">
                 {overrideRows.length === 0 ? (
                   <p className="mb-2 text-[11px] italic text-neutral-500">
-                    No project overrides yet — every project inherits the global state.
+                    {t("settings.overrides.empty")}
                   </p>
                 ) : (
                   <div className="mb-2 space-y-1">
@@ -1098,6 +1141,7 @@ function SkillsTab({ onError }: { onError: (msg: string | undefined) => void }) 
  * which are turned on for which projects).
  */
 function PromptsTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const project = useActiveProject();
   const projects = useProjectStore((s) => s.projects);
   const bumpPromptsRefresh = useUiStore((s) => s.bumpPromptsRefresh);
@@ -1121,7 +1165,7 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
       setDiagnostics(diags);
       setAllOverrides(overrides.projects);
     } catch (err) {
-      onError(`Failed to load prompts: ${errorCode(err)}`);
+      onError(t("settings.errors.loadPrompts", { code: errorCode(err) }));
     }
   };
 
@@ -1131,15 +1175,15 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
   }, [project?.id]);
 
   if (project === undefined) {
-    return (
-      <p className="text-xs italic text-neutral-500">
-        Pick a project from the header to manage its prompts.
-      </p>
-    );
+    return <p className="text-xs italic text-neutral-500">{t("settings.prompts.pickProject")}</p>;
   }
 
   if (prompts === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading prompts for {project.name}…</p>;
+    return (
+      <p className="text-xs italic text-neutral-500">
+        {t("settings.prompts.loading", { name: project.name })}
+      </p>
+    );
   }
 
   const toggleGlobal = async (name: string, next: boolean): Promise<void> => {
@@ -1151,7 +1195,7 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
       // toggled prompt appears / disappears without a project switch.
       bumpPromptsRefresh();
     } catch (err) {
-      onError(`Toggle failed: ${errorCode(err)}`);
+      onError(t("settings.errors.toggleFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -1172,7 +1216,7 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
       await refresh();
       bumpPromptsRefresh();
     } catch (err) {
-      onError(`Override write failed: ${errorCode(err)}`);
+      onError(t("settings.errors.overrideWriteFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -1192,20 +1236,26 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
   return (
     <div className="space-y-2">
       <p className="text-xs text-neutral-500">
-        Pi prompt templates discovered in <code className="font-mono">~/.pi/agent/prompts/</code>{" "}
-        and <code className="font-mono">{project.path}/.pi/prompts/</code>. Invoke from the chat
-        input via <code className="font-mono">/&lt;name&gt;</code>; the global toggle writes to
-        pi&apos;s <code className="font-mono">settings.prompts</code>; per-project overrides write
-        to <code className="font-mono">{`\${FORGE_DATA_DIR}/prompts-overrides.json`}</code>.
+        {t("settings.prompts.introPrefix")}
+        <code className="font-mono">~/.pi/agent/prompts/</code>
+        {t("settings.prompts.introMid")}
+        <code className="font-mono">{project.path}/.pi/prompts/</code>
+        {t("settings.prompts.introMid2")}
+        <code className="font-mono">/&lt;name&gt;</code>
+        {t("settings.prompts.introMid3")}
+        <code className="font-mono">settings.prompts</code>
+        {t("settings.prompts.introMid4")}
+        <code className="font-mono">{`\${FORGE_DATA_DIR}/prompts-overrides.json`}</code>
+        {t("settings.prompts.introSuffix")}
       </p>
       <div className="rounded border border-amber-700/40 bg-amber-900/10 px-3 py-2 text-[11px] text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
-        Prompt changes apply to the <strong>next session</strong> you start in the affected project.
-        Live sessions keep the prompt set they booted with — start a new session to use a freshly
-        enabled prompt.
+        {t("settings.prompts.warningPrefix")}
+        <strong>{t("settings.prompts.warningStrong")}</strong>
+        {t("settings.prompts.warningSuffix")}
       </div>
       {diagnostics.length > 0 && <SkillDiagnosticsBanner diagnostics={diagnostics} />}
       {prompts.length === 0 && (
-        <p className="text-xs italic text-neutral-500">No prompts found for this project.</p>
+        <p className="text-xs italic text-neutral-500">{t("settings.prompts.empty")}</p>
       )}
       {prompts.map((p) => {
         const key = `${p.source}:${p.name}`;
@@ -1223,7 +1273,12 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
                 className={`mt-1.5 inline-block h-2.5 w-2.5 rounded-full ${
                   p.effective ? "bg-emerald-500" : "bg-neutral-700"
                 }`}
-                title={`Effective for ${project.name}: ${p.effective ? "enabled" : "disabled"}`}
+                title={t("settings.overrides.effectiveTitle", {
+                  name: project.name,
+                  state: p.effective
+                    ? t("settings.overrides.stateEnabled")
+                    : t("settings.overrides.stateDisabled"),
+                })}
               />
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center gap-2 text-sm">
@@ -1234,7 +1289,7 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
                   {p.argumentHint !== undefined && (
                     <span
                       className="rounded bg-neutral-800/60 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300"
-                      title="Argument hint from the prompt's frontmatter"
+                      title={t("settings.prompts.argumentHintTitle")}
                     >
                       {p.argumentHint}
                     </span>
@@ -1246,13 +1301,20 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
                           ? "bg-emerald-900/40 text-emerald-300 light:bg-emerald-100 light:text-emerald-800"
                           : "bg-red-900/40 text-red-300 light:bg-red-100 light:text-red-800"
                       }`}
-                      title={`Active project ('${project.name}') has an override`}
+                      title={t("settings.overrides.projectOverrideTitle", { name: project.name })}
                     >
-                      Project: {p.projectOverride}
+                      {t("settings.overrides.projectBadge", {
+                        state:
+                          p.projectOverride === "enabled"
+                            ? t("settings.overrides.stateEnabled")
+                            : t("settings.overrides.stateDisabled"),
+                      })}
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400">{p.description || "(no description)"}</p>
+                <p className="text-xs text-neutral-400">
+                  {p.description || t("settings.overrides.noDescription")}
+                </p>
                 <p className="font-mono text-[10px] text-neutral-600">{p.filePath}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1 text-xs">
@@ -1264,16 +1326,22 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
                       ? "border-emerald-700/50 bg-emerald-900/20 text-emerald-300 light:border-emerald-300 light:bg-emerald-50 light:text-emerald-800"
                       : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
                   }`}
-                  title="Global enable in pi's settings.prompts"
+                  title={t("settings.prompts.globalToggleTitle")}
                 >
-                  Global: {p.enabled ? "enabled" : "disabled"}
+                  {t("settings.overrides.globalState", {
+                    state: p.enabled
+                      ? t("settings.overrides.stateEnabled")
+                      : t("settings.overrides.stateDisabled"),
+                  })}
                 </button>
                 <button
                   onClick={() => setExpanded((e) => ({ ...e, [key]: !isExpanded }))}
                   className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
-                  title="Show per-project overrides"
+                  title={t("settings.overrides.showTitle")}
                 >
-                  {isExpanded ? "▾ Overrides" : `▸ Overrides (${overrideRows.length})`}
+                  {isExpanded
+                    ? `▾ ${t("settings.overrides.name")}`
+                    : `▸ ${t("settings.overrides.name")} (${overrideRows.length})`}
                 </button>
               </div>
             </div>
@@ -1281,7 +1349,7 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
               <div className="border-t border-neutral-800 px-3 py-2">
                 {overrideRows.length === 0 ? (
                   <p className="mb-2 text-[11px] italic text-neutral-500">
-                    No project overrides yet — every project inherits the global state.
+                    {t("settings.overrides.empty")}
                   </p>
                 ) : (
                   <div className="mb-2 space-y-1">
@@ -1330,10 +1398,11 @@ function PromptsTab({ onError }: { onError: (msg: string | undefined) => void })
  * file without grepping through pi-mono source.
  */
 function SkillDiagnosticsBanner({ diagnostics }: { diagnostics: SkillDiagnostic[] }) {
+  const t = useT();
   return (
     <div className="space-y-1 rounded border border-red-700/40 bg-red-900/10 px-3 py-2 text-[11px] text-red-200">
       <p className="font-medium">
-        {diagnostics.length} skill {diagnostics.length === 1 ? "file" : "files"} were not loaded:
+        {t.plural("settings.diagnostics.notLoaded", diagnostics.length)}
       </p>
       <ul className="space-y-1.5">
         {diagnostics.map((d, i) => (
@@ -1347,16 +1416,19 @@ function SkillDiagnosticsBanner({ diagnostics }: { diagnostics: SkillDiagnostic[
             {d.collision !== undefined && (
               <div className="mt-0.5 font-mono text-[10px] text-red-300/80">
                 <div>
-                  loser:&nbsp;&nbsp;<span className="text-red-200">{d.collision.loserPath}</span>
+                  {t("settings.diagnostics.loser")}&nbsp;&nbsp;
+                  <span className="text-red-200">{d.collision.loserPath}</span>
                 </div>
                 <div>
-                  winner:&nbsp;<span className="text-red-200">{d.collision.winnerPath}</span>
+                  {t("settings.diagnostics.winner")}&nbsp;
+                  <span className="text-red-200">{d.collision.winnerPath}</span>
                 </div>
                 <div className="mt-1 text-red-300/70">
-                  Add <code className="rounded bg-red-900/40 px-1">name: {`<unique>`}</code> to the
-                  loser&apos;s frontmatter, or move it to{" "}
-                  <code className="rounded bg-red-900/40 px-1">{`<unique>/SKILL.md`}</code> so the
-                  parent dir name disambiguates.
+                  {t("settings.diagnostics.fixPrefix")}
+                  <code className="rounded bg-red-900/40 px-1">name: {`<unique>`}</code>
+                  {t("settings.diagnostics.fixMid")}
+                  <code className="rounded bg-red-900/40 px-1">{`<unique>/SKILL.md`}</code>
+                  {t("settings.diagnostics.fixSuffix")}
                 </div>
               </div>
             )}
@@ -1379,6 +1451,7 @@ function TriStatePicker({
   disabled: boolean;
   onChange: (next: "enabled" | "disabled" | undefined) => void;
 }) {
+  const t = useT();
   const btn = (label: string, state: "enabled" | "disabled" | undefined, active: boolean) => (
     <button
       onClick={() => onChange(state)}
@@ -1398,9 +1471,9 @@ function TriStatePicker({
   );
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded border border-neutral-700 px-0.5">
-      {btn("Inherit", undefined, value === undefined)}
-      {btn("Enabled", "enabled", value === "enabled")}
-      {btn("Disabled", "disabled", value === "disabled")}
+      {btn(t("settings.overrides.inherit"), undefined, value === undefined)}
+      {btn(t("common.enabled"), "enabled", value === "enabled")}
+      {btn(t("common.disabled"), "disabled", value === "disabled")}
     </div>
   );
 }
@@ -1414,6 +1487,7 @@ function AddOverrideDropdown({
   disabled: boolean;
   onAdd: (projectId: string, state: "enabled" | "disabled") => void;
 }) {
+  const t = useT();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [picked, setPicked] = useState<string>("");
   if (!pickerOpen) {
@@ -1423,7 +1497,7 @@ function AddOverrideDropdown({
         disabled={disabled}
         className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
       >
-        + Add override for…
+        {t("settings.overrides.addFor")}
       </button>
     );
   }
@@ -1434,7 +1508,7 @@ function AddOverrideDropdown({
         onChange={(e) => setPicked(e.target.value)}
         className="rounded border border-neutral-700 bg-neutral-950 px-2 py-0.5 text-neutral-100 outline-none focus:border-neutral-500"
       >
-        <option value="">Pick project…</option>
+        <option value="">{t("settings.overrides.pickProject")}</option>
         {projects.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -1451,7 +1525,7 @@ function AddOverrideDropdown({
         disabled={disabled || picked.length === 0}
         className="rounded bg-emerald-900/40 px-2 py-0.5 text-emerald-300 disabled:opacity-50 light:bg-emerald-100 light:text-emerald-800"
       >
-        Enable here
+        {t("settings.overrides.enableHere")}
       </button>
       <button
         onClick={() => {
@@ -1463,7 +1537,7 @@ function AddOverrideDropdown({
         disabled={disabled || picked.length === 0}
         className="rounded bg-red-900/40 px-2 py-0.5 text-red-300 disabled:opacity-50"
       >
-        Disable here
+        {t("settings.overrides.disableHere")}
       </button>
       <button
         onClick={() => {
@@ -1472,7 +1546,7 @@ function AddOverrideDropdown({
         }}
         className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-400 hover:border-neutral-500"
       >
-        Cancel
+        {t("common.cancel")}
       </button>
     </div>
   );
@@ -1499,7 +1573,7 @@ function sandboxRowsToEnv(rows: readonly SandboxEnvRow[]): Record<string, string
     const name = row.name.trim();
     if (name.length === 0 && row.value.length === 0) continue;
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new Error(`Row ${idx + 1}: invalid environment variable name`);
+      throw new Error(translate("settings.sandbox.invalidEnvName", { row: idx + 1 }));
     }
     out[name] = row.value;
   }
@@ -1508,6 +1582,7 @@ function sandboxRowsToEnv(rows: readonly SandboxEnvRow[]): Record<string, string
 
 function SandboxTab({ onError }: { onError: (msg: string | undefined) => void }) {
   const appName = useUiConfigStore((s) => s.appName);
+  const t = useT();
   const [settings, setSettings] = useState<SandboxSettingsResponse | undefined>(undefined);
   const [rows, setRows] = useState<SandboxEnvRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1568,35 +1643,30 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
       className="space-y-4"
     >
       <div>
-        <h2 className="text-sm font-semibold text-neutral-100">Sandbox mode</h2>
-        <p className="mt-1 text-xs text-neutral-400">
-          Configure environment variables injected into future agent tool calls. Sandbox enablement,
-          UID/GID, and tool HOME are deploy-time settings; changes here take effect for new or
-          refreshed sessions.
-        </p>
+        <h2 className="text-sm font-semibold text-neutral-100">{t("settings.sandbox.title")}</h2>
+        <p className="mt-1 text-xs text-neutral-400">{t("settings.sandbox.description")}</p>
       </div>
 
       <div className="rounded border border-neutral-800 bg-neutral-950 p-3 text-xs text-neutral-300">
         {loading ? (
-          <span className="text-neutral-500">Loading sandbox settings…</span>
+          <span className="text-neutral-500">{t("settings.sandbox.loading")}</span>
         ) : settings?.enabled ? (
           <span>
-            Enabled{settings.uid !== undefined ? ` · uid ${settings.uid}` : ""}
+            {t("common.enabled")}
+            {settings.uid !== undefined ? ` · uid ${settings.uid}` : ""}
             {settings.gid !== undefined ? ` · gid ${settings.gid}` : ""}
             {settings.home !== undefined ? ` · home ${settings.home}` : ""}
           </span>
         ) : (
-          <span className="text-amber-300">
-            Sandbox tool overrides are disabled. Saved variables are persisted, but only injected
-            into forge-managed tool shells; full filesystem sandboxing requires
-            AGENT_TOOL_SANDBOX_ENABLED=true.
-          </span>
+          <span className="text-amber-300">{t("settings.sandbox.disabledNotice")}</span>
         )}
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium text-neutral-300">Tool environment</span>
+          <span className="text-xs font-medium text-neutral-300">
+            {t("settings.sandbox.toolEnvironment")}
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -1608,13 +1678,13 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
             }}
             className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
           >
-            Add variable
+            {t("settings.sandbox.addVariable")}
           </button>
         </div>
         <div className="space-y-2">
           {rows.length === 0 && (
             <div className="rounded border border-dashed border-neutral-800 px-3 py-4 text-xs text-neutral-500">
-              No sandbox tool environment variables configured.
+              {t("settings.sandbox.emptyEnv")}
             </div>
           )}
           {rows.map((row) => (
@@ -1632,7 +1702,7 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
                 placeholder="HTTP_PROXY"
                 spellCheck={false}
                 className="rounded border border-neutral-800 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-100 outline-none focus:border-neutral-600"
-                aria-label="Environment variable name"
+                aria-label={t("settings.sandbox.envNameAria")}
               />
               <input
                 value={row.value}
@@ -1642,11 +1712,11 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
                   setSaved(false);
                 }}
                 type={row.revealed ? "text" : "password"}
-                placeholder="value"
+                placeholder={t("settings.sandbox.valuePlaceholder")}
                 spellCheck={false}
                 autoComplete="off"
                 className="rounded border border-neutral-800 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-100 outline-none focus:border-neutral-600"
-                aria-label="Environment variable value"
+                aria-label={t("settings.sandbox.envValueAria")}
               />
               <button
                 type="button"
@@ -1657,7 +1727,7 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
                 }
                 className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
               >
-                {row.revealed ? "Hide" : "Reveal"}
+                {row.revealed ? t("settings.sandbox.hide") : t("settings.sandbox.reveal")}
               </button>
               <button
                 type="button"
@@ -1667,15 +1737,14 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
                 }}
                 className="rounded border border-red-900/60 px-2 py-1 text-xs text-red-300 hover:border-red-700"
               >
-                Remove
+                {t("common.remove")}
               </button>
             </div>
           ))}
         </div>
       </div>
       <p className="text-xs text-neutral-500">
-        Values are masked by default and only revealed per row. They are still stored in {appName}
-        data and passed to tool processes, so avoid secrets unless that storage is protected.
+        {t("settings.sandbox.secretsHint", { brand: appName })}
       </p>
 
       <div className="flex items-center gap-3">
@@ -1684,9 +1753,9 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
           disabled={loading || saving}
           className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save sandbox env"}
+          {saving ? t("common.saving") : t("settings.sandbox.saveButton")}
         </button>
-        {saved && <span className="text-xs text-green-400">Saved</span>}
+        {saved && <span className="text-xs text-green-400">{t("common.saved")}</span>}
       </div>
     </form>
   );
@@ -1712,6 +1781,7 @@ function SandboxTab({ onError }: { onError: (msg: string | undefined) => void })
  * as every settings change today).
  */
 function ToolsTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const projects = useProjectStore((s) => s.projects);
   const [listing, setListing] = useState<ToolListing | undefined>(undefined);
   const [allOverrides, setAllOverrides] = useState<
@@ -1736,7 +1806,7 @@ function ToolsTab({ onError }: { onError: (msg: string | undefined) => void }) {
       setListing(list);
       setAllOverrides(overrides.projects);
     } catch (err) {
-      onError(`Failed to load tools: ${errorCode(err)}`);
+      onError(t("settings.errors.loadTools", { code: errorCode(err) }));
     }
   };
 
@@ -1755,7 +1825,7 @@ function ToolsTab({ onError }: { onError: (msg: string | undefined) => void }) {
       await api.setToolEnabled(family, name, nextEnabled, "global");
       await refresh();
     } catch (err) {
-      onError(`Toggle failed: ${errorCode(err)}`);
+      onError(t("settings.errors.toggleFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -1776,45 +1846,45 @@ function ToolsTab({ onError }: { onError: (msg: string | undefined) => void }) {
       }
       await refresh();
     } catch (err) {
-      onError(`Override write failed: ${errorCode(err)}`);
+      onError(t("settings.errors.overrideWriteFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   if (listing === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading tools…</p>;
+    return <p className="text-xs italic text-neutral-500">{t("settings.tools.loading")}</p>;
   }
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-neutral-500">
-        Toggle individual built-in tools the agent can call. The global toggle on the right is the
-        default for every project. Use <strong>Overrides</strong> to enable/disable a tool per
-        project — explicit project overrides win over the global default. Changes apply to the next
-        session — already-running sessions keep the tool set they started with. MCP server tools
-        live under their respective server in the <strong>MCP</strong> tab.
+        {t("settings.tools.introPrefix")}
+        <strong>{t("settings.overrides.name")}</strong>
+        {t("settings.tools.introMid")}
+        <strong>MCP</strong>
+        {t("settings.tools.introSuffix")}
       </p>
 
       <section>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-          Built-in tools
+          {t("settings.tools.builtinTitle")}
         </h3>
         <div className="space-y-2">
-          {listing.builtin.map((t) => (
+          {listing.builtin.map((tool) => (
             <ToolCascadeRow
-              key={`builtin:${t.name}`}
+              key={`builtin:${tool.name}`}
               family="builtin"
-              name={t.name}
-              fqn={t.name}
-              description={t.description}
-              globalEnabled={t.globalEnabled}
+              name={tool.name}
+              fqn={tool.name}
+              description={tool.description}
+              globalEnabled={tool.globalEnabled}
               projects={projects}
               allOverrides={allOverrides}
               busy={busy}
-              onToggleGlobal={(next) => void toggleGlobal("builtin", t.name, next)}
+              onToggleGlobal={(next) => void toggleGlobal("builtin", tool.name, next)}
               onSetProjectOverride={(projectId, state) =>
-                void setProjectOverride("builtin", projectId, t.name, state)
+                void setProjectOverride("builtin", projectId, tool.name, state)
               }
             />
           ))}
@@ -1824,35 +1894,37 @@ function ToolsTab({ onError }: { onError: (msg: string | undefined) => void }) {
       {listing.extension.length > 0 && (
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Extension tools
+            {t("settings.tools.extensionTitle")}
           </h3>
           <p className="mb-2 text-[11px] text-neutral-500">
-            Tools registered programmatically by pi extensions installed under{" "}
-            <code className="font-mono">~/.pi/agent/extensions/</code> or a project's{" "}
-            <code className="font-mono">.pi/extensions/</code>. Disabled tools are dropped from the
-            allowlist passed to the next session — the extension itself remains loaded.
+            {t("settings.tools.extensionIntroPrefix")}
+            <code className="font-mono">~/.pi/agent/extensions/</code>
+            {t("settings.tools.extensionIntroMid")}
+            <code className="font-mono">.pi/extensions/</code>
+            {t("settings.tools.extensionIntroSuffix")}
           </p>
           <div className="space-y-4">
             {listing.extension.map((ext) => (
               <div key={ext.packageSource} className="space-y-2">
                 <div className="text-[11px] font-semibold text-neutral-300">
-                  Package: <code className="font-mono text-neutral-400">{ext.packageSource}</code>
+                  {t("settings.tools.packageLabel")}
+                  <code className="font-mono text-neutral-400">{ext.packageSource}</code>
                 </div>
                 <div className="space-y-2">
-                  {ext.tools.map((t) => (
+                  {ext.tools.map((tool) => (
                     <ToolCascadeRow
-                      key={`extension:${ext.packageSource}:${t.name}`}
+                      key={`extension:${ext.packageSource}:${tool.name}`}
                       family="extension"
-                      name={t.name}
-                      fqn={t.name}
-                      description={t.description}
-                      globalEnabled={t.globalEnabled}
+                      name={tool.name}
+                      fqn={tool.name}
+                      description={tool.description}
+                      globalEnabled={tool.globalEnabled}
                       projects={projects}
                       allOverrides={allOverrides}
                       busy={busy}
-                      onToggleGlobal={(next) => void toggleGlobal("extension", t.name, next)}
+                      onToggleGlobal={(next) => void toggleGlobal("extension", tool.name, next)}
                       onSetProjectOverride={(projectId, state) =>
-                        void setProjectOverride("extension", projectId, t.name, state)
+                        void setProjectOverride("extension", projectId, tool.name, state)
                       }
                     />
                   ))}
@@ -1906,6 +1978,7 @@ function ToolCascadeRow({
   onToggleGlobal: (next: boolean) => void;
   onSetProjectOverride: (projectId: string, state: "enabled" | "disabled" | undefined) => void;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const overrideStateFor = (projectId: string): "enabled" | "disabled" | undefined => {
     const entry = allOverrides[projectId];
@@ -1931,7 +2004,11 @@ function ToolCascadeRow({
           className={`mt-1.5 inline-block h-2.5 w-2.5 rounded-full ${
             globalEnabled ? "bg-emerald-500" : "bg-neutral-700"
           }`}
-          title={`Global default: ${globalEnabled ? "enabled" : "disabled"}`}
+          title={t("settings.toolCascade.globalDefaultTitle", {
+            state: globalEnabled
+              ? t("settings.overrides.stateEnabled")
+              : t("settings.overrides.stateDisabled"),
+          })}
         />
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 text-sm">
@@ -1939,7 +2016,7 @@ function ToolCascadeRow({
             {fqn !== name && (
               <span
                 className="font-mono text-[10px] text-neutral-500"
-                title="Bridged tool name pi sees on the wire"
+                title={t("settings.toolCascade.bridgedNameTitle")}
               >
                 {fqn}
               </span>
@@ -1960,16 +2037,22 @@ function ToolCascadeRow({
                 ? "border-emerald-700/50 bg-emerald-900/20 text-emerald-300 light:border-emerald-300 light:bg-emerald-50 light:text-emerald-800"
                 : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
             }`}
-            title="Global default for every project that doesn't override"
+            title={t("settings.toolCascade.globalToggleTitle")}
           >
-            Global: {globalEnabled ? "enabled" : "disabled"}
+            {t("settings.overrides.globalState", {
+              state: globalEnabled
+                ? t("settings.overrides.stateEnabled")
+                : t("settings.overrides.stateDisabled"),
+            })}
           </button>
           <button
             onClick={() => setExpanded((e) => !e)}
             className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
-            title="Show per-project overrides"
+            title={t("settings.overrides.showTitle")}
           >
-            {expanded ? "▾ Overrides" : `▸ Overrides (${overrideRows.length})`}
+            {expanded
+              ? `▾ ${t("settings.overrides.name")}`
+              : `▸ ${t("settings.overrides.name")} (${overrideRows.length})`}
           </button>
         </div>
       </div>
@@ -1977,7 +2060,7 @@ function ToolCascadeRow({
         <div className="border-t border-neutral-800 px-3 py-2">
           {overrideRows.length === 0 ? (
             <p className="mb-2 text-[11px] italic text-neutral-500">
-              No project overrides yet — every project inherits the global state.
+              {t("settings.overrides.empty")}
             </p>
           ) : (
             <div className="mb-2 space-y-1">
@@ -2007,7 +2090,7 @@ function ToolCascadeRow({
           )}
           {projects.length === 0 && (
             <p className="text-[11px] italic text-neutral-500">
-              No projects exist yet. Create a project first to add per-project overrides.
+              {t("settings.overrides.noProjects")}
             </p>
           )}
         </div>
@@ -2027,6 +2110,7 @@ function ToolCascadeRow({
  * keep the prompt they were built with.
  */
 function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const project = useActiveProject();
   const [addendum, setAddendum] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
@@ -2051,7 +2135,7 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
         setMaxBytes(res.maxBytes);
       } catch (err) {
         if (cancelled) return;
-        onError(`Failed to load system prompt: ${errorCode(err)}`);
+        onError(t("settings.errors.loadSystemPrompt", { code: errorCode(err) }));
       }
     })();
     return () => {
@@ -2062,14 +2146,14 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
 
   if (project === undefined) {
     return (
-      <p className="text-xs italic text-neutral-500">
-        Pick a project from the header to edit its system prompt addendum.
-      </p>
+      <p className="text-xs italic text-neutral-500">{t("settings.systemPrompt.pickProject")}</p>
     );
   }
   if (addendum === undefined) {
     return (
-      <p className="text-xs italic text-neutral-500">Loading system prompt for {project.name}…</p>
+      <p className="text-xs italic text-neutral-500">
+        {t("settings.systemPrompt.loading", { name: project.name })}
+      </p>
     );
   }
 
@@ -2087,17 +2171,17 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
       setAddendum(res.addendum);
       setDraft(res.addendum);
       setMaxBytes(res.maxBytes);
-      setSavedMsg("Saved. Applies to the next session you start in this project.");
+      setSavedMsg(t("settings.systemPrompt.saved"));
       window.setTimeout(() => setSavedMsg(undefined), 4_000);
     } catch (err) {
-      onError(`Save failed: ${errorCode(err)}`);
+      onError(t("settings.errors.saveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   const clear = async (): Promise<void> => {
-    if (!confirm(`Clear the system prompt addendum for "${project.name}"?`)) return;
+    if (!confirm(t("settings.systemPrompt.confirmClear", { name: project.name }))) return;
     setBusy(true);
     setSavedMsg(undefined);
     onError(undefined);
@@ -2106,10 +2190,10 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
       setAddendum(res.addendum);
       setDraft(res.addendum);
       setMaxBytes(res.maxBytes);
-      setSavedMsg("Cleared. Applies to the next session you start in this project.");
+      setSavedMsg(t("settings.systemPrompt.cleared"));
       window.setTimeout(() => setSavedMsg(undefined), 4_000);
     } catch (err) {
-      onError(`Clear failed: ${errorCode(err)}`);
+      onError(t("settings.errors.clearFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -2119,15 +2203,14 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
     <div className="space-y-3">
       <div className="space-y-1 text-xs text-neutral-400">
         <p>
-          Free-form text appended to the agent's base system prompt for sessions in{" "}
-          <strong className="text-neutral-200">{project.name}</strong>. Use this to layer
-          project-specific behavior on top of pi's defaults — coding conventions, domain context,
-          persona, etc.
+          {t("settings.systemPrompt.introPrefix")}
+          <strong className="text-neutral-200">{project.name}</strong>
+          {t("settings.systemPrompt.introSuffix")}
         </p>
         <p className="text-[11px]">
-          Append-only — the base prompt (which defines the tool-calling protocol) is not editable.
-          Changes apply to the <strong>next session</strong> you start in this project; running
-          sessions keep the prompt they were built with.
+          {t("settings.systemPrompt.appendOnlyPrefix")}
+          <strong>{t("settings.systemPrompt.appendOnlyStrong")}</strong>
+          {t("settings.systemPrompt.appendOnlySuffix")}
         </p>
       </div>
 
@@ -2137,14 +2220,17 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
         disabled={busy}
         rows={14}
         spellCheck={false}
-        placeholder="e.g. This project uses TypeScript strict mode and never uses default exports. Always run `npm run check` before declaring a task complete."
+        placeholder={t("settings.systemPrompt.placeholder")}
         className="w-full resize-y rounded border border-neutral-800 bg-neutral-900 px-3 py-2 font-mono text-xs leading-relaxed text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none disabled:opacity-50"
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
         <span className={overBudget ? "text-red-400" : "text-neutral-500"}>
-          {byteLen.toLocaleString()} / {maxBytes.toLocaleString()} bytes
-          {overBudget && " — too long, please trim before saving"}
+          {t("settings.systemPrompt.byteCounter", {
+            used: byteLen.toLocaleString(),
+            limit: maxBytes.toLocaleString(),
+          })}
+          {overBudget && t("settings.systemPrompt.overBudget")}
         </span>
         <div className="flex items-center gap-2">
           {savedMsg !== undefined && <span className="text-green-400">{savedMsg}</span>}
@@ -2155,7 +2241,7 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
               disabled={busy}
               className="rounded border border-neutral-800 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-600 disabled:opacity-50"
             >
-              Revert
+              {t("settings.systemPrompt.revert")}
             </button>
           )}
           {addendum.length > 0 && (
@@ -2165,7 +2251,7 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
               disabled={busy}
               className="rounded border border-neutral-800 px-3 py-1 text-xs text-neutral-300 hover:border-red-500 hover:text-red-300 disabled:opacity-50"
             >
-              Clear
+              {t("common.clear")}
             </button>
           )}
           <button
@@ -2174,7 +2260,7 @@ function SystemPromptTab({ onError }: { onError: (msg: string | undefined) => vo
             disabled={busy || overBudget || !dirty}
             className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </div>
@@ -2209,6 +2295,7 @@ function emptyActionDraft(kind: "command" | "prompt"): DraftAction {
 
 function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => void }) {
   const appName = useUiConfigStore((s) => s.appName);
+  const t = useT();
   const minimal = useUiConfigStore((s) => s.minimal);
   const loaded = useQuickActionsStore((s) => s.loaded);
   const actions = useQuickActionsStore((s) => s.actions);
@@ -2244,7 +2331,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
     if (draft === undefined) return;
     const trimmedName = draft.name.trim();
     if (trimmedName.length === 0) {
-      onError("Name is required");
+      onError(t("settings.quickActions.nameRequired"));
       return;
     }
     const body: {
@@ -2258,7 +2345,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
     if (draft.kind === "command") {
       const cmd = draft.command.trim();
       if (cmd.length === 0) {
-        onError("Command is required");
+        onError(t("settings.quickActions.commandRequired"));
         return;
       }
       body.command = cmd;
@@ -2267,7 +2354,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
     } else {
       const text = draft.text.trim();
       if (text.length === 0) {
-        onError("Prompt text is required");
+        onError(t("settings.quickActions.promptRequired"));
         return;
       }
       body.text = text;
@@ -2280,7 +2367,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
       setDraft(undefined);
       onError(undefined);
     } catch (err) {
-      onError(`Save failed: ${errorCode(err)}`);
+      onError(t("settings.errors.saveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -2293,7 +2380,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
       setPendingDeleteId(undefined);
       if (draft?.id === id) setDraft(undefined);
     } catch (err) {
-      onError(`Delete failed: ${errorCode(err)}`);
+      onError(t("settings.errors.deleteFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -2302,29 +2389,31 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-neutral-100">Quick action chips</h2>
+        <h2 className="text-sm font-semibold text-neutral-100">
+          {t("settings.quickActions.title")}
+        </h2>
         <p className="mt-1 text-xs text-neutral-400">
-          One-click buttons on the chat toolbar. Two kinds:{" "}
-          <span className="text-amber-400 light:text-amber-700">command</span> chips run a shell
-          snippet in the active project&apos;s folder;{" "}
-          <span className="text-sky-400 light:text-sky-700">prompt</span> chips either send a
-          templated prompt to the agent or insert it into the composer so you can tweak it before
-          sending. Chips are stored globally (not per-project) — they&apos;re your personal toolbox.
+          {t("settings.quickActions.introPrefix")}
+          <span className="text-amber-400 light:text-amber-700">
+            {t("settings.quickActions.introCommand")}
+          </span>
+          {t("settings.quickActions.introMid")}
+          <span className="text-sky-400 light:text-sky-700">
+            {t("settings.quickActions.introPrompt")}
+          </span>
+          {t("settings.quickActions.introSuffix")}
         </p>
       </div>
 
       {minimal && (
         <div className="rounded border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
-          MINIMAL_UI is enabled. Command chips are listed below but are hidden from the toolbar and
-          the server refuses to run them. Prompt chips are unaffected.
+          {t("settings.quickActions.minimalNotice")}
         </div>
       )}
 
       <div className="space-y-1">
         {actions.length === 0 && loaded && (
-          <p className="text-xs italic text-neutral-500">
-            No chips defined yet. Click &ldquo;New&rdquo; below to add one.
-          </p>
+          <p className="text-xs italic text-neutral-500">{t("settings.quickActions.empty")}</p>
         )}
         {actions.map((a) => {
           const isCmd = typeof a.command === "string" && a.command.length > 0;
@@ -2343,24 +2432,26 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                     : "bg-sky-900/40 text-sky-300 light:bg-sky-100 light:text-sky-900"
                 }`}
               >
-                {isCmd ? "cmd" : "prompt"}
+                {isCmd
+                  ? t("settings.quickActions.badgeCommand")
+                  : t("settings.quickActions.badgePrompt")}
               </span>
               <span className="flex-1 truncate font-medium text-neutral-200">{a.name}</span>
               {a.enabled === false && (
                 <span className="text-[10px] uppercase tracking-wider text-neutral-500">
-                  disabled
+                  {t("common.disabled")}
                 </span>
               )}
               {hiddenInMinimal && (
                 <span className="text-[10px] uppercase tracking-wider text-amber-400 light:text-amber-700">
-                  hidden by MINIMAL_UI
+                  {t("settings.quickActions.hiddenByMinimal")}
                 </span>
               )}
               <button
                 onClick={() => startEdit(a)}
                 className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500 light:border-neutral-400"
               >
-                Edit
+                {t("common.edit")}
               </button>
               {pendingDeleteId === a.id ? (
                 <>
@@ -2369,13 +2460,13 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                     disabled={busy}
                     className="rounded border border-red-700 px-2 py-0.5 text-[11px] text-red-300 hover:bg-red-900/40 light:border-red-400 light:text-red-700"
                   >
-                    Confirm
+                    {t("common.confirm")}
                   </button>
                   <button
                     onClick={() => setPendingDeleteId(undefined)}
                     className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-400 hover:border-neutral-500 light:border-neutral-400"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </>
               ) : (
@@ -2383,7 +2474,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                   onClick={() => setPendingDeleteId(a.id)}
                   className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-400 hover:border-red-500 hover:text-red-300 light:border-neutral-400"
                 >
-                  Delete
+                  {t("common.delete")}
                 </button>
               )}
             </div>
@@ -2396,7 +2487,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
           onClick={() => setDraft(emptyActionDraft("prompt"))}
           className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:border-neutral-500 light:border-neutral-400"
         >
-          + New chip
+          {t("settings.quickActions.newChip")}
         </button>
       )}
 
@@ -2404,18 +2495,18 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
         <div className="space-y-3 rounded border border-neutral-700 bg-neutral-900/60 p-3 light:border-neutral-300 light:bg-white">
           <div>
             <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-              Name
+              {t("common.name")}
             </label>
             <input
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              placeholder="e.g. Run tests"
+              placeholder={t("settings.quickActions.namePlaceholder")}
               className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100 light:border-neutral-300 light:bg-white"
             />
           </div>
           <div>
             <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-              Kind
+              {t("settings.quickActions.kindLabel")}
             </label>
             <div className="flex items-center gap-3 text-xs text-neutral-300">
               <label className="flex items-center gap-1.5">
@@ -2424,15 +2515,11 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                   checked={draft.kind === "prompt"}
                   onChange={() => setDraft({ ...draft, kind: "prompt" })}
                 />
-                Prompt
+                {t("settings.quickActions.kindPrompt")}
               </label>
               <label
                 className={`flex items-center gap-1.5 ${minimal ? "opacity-50" : ""}`}
-                title={
-                  minimal
-                    ? "Command chips are disabled by MINIMAL_UI. The server refuses to run them."
-                    : undefined
-                }
+                title={minimal ? t("settings.quickActions.commandDisabledTitle") : undefined}
               >
                 <input
                   type="radio"
@@ -2440,7 +2527,8 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                   disabled={minimal}
                   onChange={() => setDraft({ ...draft, kind: "command" })}
                 />
-                Command{minimal ? " (disabled by MINIMAL_UI)" : ""}
+                {t("settings.quickActions.kindCommand")}
+                {minimal ? t("settings.quickActions.commandDisabledByMinimal") : ""}
               </label>
             </div>
           </div>
@@ -2448,7 +2536,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
             <>
               <div>
                 <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-                  Command
+                  {t("settings.quickActions.commandLabel")}
                 </label>
                 <textarea
                   value={draft.command}
@@ -2458,14 +2546,18 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                   className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-100 light:border-neutral-300 light:bg-white"
                 />
                 <p className="mt-1 text-[11px] text-neutral-500">
-                  Runs in the active project&apos;s folder via <code>/bin/sh -c</code>. Multi-line
-                  is fine (<code>&amp;&amp;</code>, <code>;</code>, etc.). Environment is scrubbed
-                  of {appName} and provider secrets (same as the integrated terminal).
+                  {t("settings.quickActions.commandHintPrefix")}
+                  <code>/bin/sh -c</code>
+                  {t("settings.quickActions.commandHintMid")}
+                  <code>&amp;&amp;</code>
+                  {t("settings.quickActions.commandHintMid2")}
+                  <code>;</code>
+                  {t("settings.quickActions.commandHintSuffix", { brand: appName })}
                 </p>
               </div>
               <div>
                 <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-                  Timeout (seconds)
+                  {t("settings.quickActions.timeoutLabel")}
                 </label>
                 <input
                   value={draft.timeoutSec}
@@ -2474,7 +2566,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                   className="w-24 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-sm text-neutral-100 light:border-neutral-300 light:bg-white"
                 />
                 <p className="mt-1 text-[11px] text-neutral-500">
-                  Max 300 (five minutes). Past that, use the integrated terminal.
+                  {t("settings.quickActions.timeoutHint")}
                 </p>
               </div>
             </>
@@ -2482,19 +2574,19 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
             <>
               <div>
                 <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-                  Prompt text
+                  {t("settings.quickActions.promptTextLabel")}
                 </label>
                 <textarea
                   value={draft.text}
                   onChange={(e) => setDraft({ ...draft, text: e.target.value })}
                   rows={4}
-                  placeholder="Review the staged changes for security issues."
+                  placeholder={t("settings.quickActions.promptPlaceholder")}
                   className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-100 light:border-neutral-300 light:bg-white"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-[11px] uppercase tracking-wider text-neutral-400">
-                  Mode
+                  {t("settings.quickActions.modeLabel")}
                 </label>
                 <div className="flex items-center gap-3 text-xs text-neutral-300">
                   <label className="flex items-center gap-1.5">
@@ -2503,7 +2595,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                       checked={draft.mode === "send"}
                       onChange={() => setDraft({ ...draft, mode: "send" })}
                     />
-                    Send immediately
+                    {t("settings.quickActions.modeSend")}
                   </label>
                   <label className="flex items-center gap-1.5">
                     <input
@@ -2511,7 +2603,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                       checked={draft.mode === "insert"}
                       onChange={() => setDraft({ ...draft, mode: "insert" })}
                     />
-                    Insert into composer
+                    {t("settings.quickActions.modeInsert")}
                   </label>
                 </div>
               </div>
@@ -2524,7 +2616,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
                 checked={draft.enabled}
                 onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
               />
-              Enabled (visible in the menu)
+              {t("settings.quickActions.enabledLabel")}
             </label>
           </div>
           <div className="flex items-center gap-2 border-t border-neutral-800 pt-3 light:border-neutral-300">
@@ -2533,13 +2625,13 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
               disabled={busy}
               className="rounded bg-emerald-700 px-3 py-1 text-xs text-white hover:bg-emerald-600 disabled:opacity-50"
             >
-              {draft.id === undefined ? "Create" : "Save"}
+              {draft.id === undefined ? t("common.create") : t("common.save")}
             </button>
             <button
               onClick={() => setDraft(undefined)}
               className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-500 light:border-neutral-400"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -2551,6 +2643,7 @@ function QuickActionsTab({ onError }: { onError: (msg: string | undefined) => vo
 // ---------------- Appearance tab ----------------
 
 function AppearanceTab() {
+  const t = useT();
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
   const currentServerTheme = useUiConfigStore((s) => s.serverTheme);
@@ -2669,10 +2762,11 @@ function AppearanceTab() {
     <div className="space-y-6">
       <div className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-100">Theme</h2>
+          <h2 className="text-sm font-semibold text-neutral-100">
+            {t("settings.appearance.themeTitle")}
+          </h2>
           <p className="mt-1 text-xs text-neutral-400">
-            Sets the base color palette for the chrome, editor, and terminal. Persisted in this
-            browser only — open in another browser to use a different base theme there.
+            {t("settings.appearance.themeDescription")}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -2689,7 +2783,7 @@ function AppearanceTab() {
                 }`}
               >
                 <div>
-                  <div className="text-sm text-neutral-100">{def.label}</div>
+                  <div className="text-sm text-neutral-100">{t(THEME_LABELS[def.id])}</div>
                   <div className="text-[10px] uppercase tracking-wider text-neutral-500">
                     {def.mode}
                   </div>
@@ -2702,11 +2796,16 @@ function AppearanceTab() {
       </div>
 
       <div className="space-y-3 border-t border-neutral-800 pt-4">
+        <LanguagePicker />
+      </div>
+
+      <div className="space-y-3 border-t border-neutral-800 pt-4">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-100">Global custom colors</h2>
+          <h2 className="text-sm font-semibold text-neutral-100">
+            {t("settings.appearance.customColorsTitle")}
+          </h2>
           <p className="mt-1 text-xs text-neutral-400">
-            Server-side overrides for broad UI surfaces: app background, chat bubbles, text,
-            highlights, and selection. Applies globally to every browser using this instance.
+            {t("settings.appearance.customColorsDescription")}
           </p>
         </div>
         {serverThemeError !== undefined && (
@@ -2715,7 +2814,7 @@ function AppearanceTab() {
           </div>
         )}
         {serverThemeDraft === undefined ? (
-          <p className="text-xs text-neutral-500">Loading custom colors…</p>
+          <p className="text-xs text-neutral-500">{t("settings.appearance.customColorsLoading")}</p>
         ) : (
           <>
             <label className="flex items-center gap-2 text-sm text-neutral-200">
@@ -2728,11 +2827,11 @@ function AppearanceTab() {
                   )
                 }
               />
-              Enable global custom colors
+              {t("settings.appearance.customColorsEnabled")}
             </label>
             <div className="flex flex-wrap items-end gap-2 rounded border border-neutral-800 bg-neutral-900/30 p-2">
               <label className="min-w-48 flex-1 text-xs text-neutral-400">
-                Start from appearance
+                {t("settings.appearance.customColorsStartFrom")}
                 <select
                   value={baseThemeId}
                   onChange={(e) => setBaseThemeId(e.target.value as ThemeId)}
@@ -2740,7 +2839,7 @@ function AppearanceTab() {
                 >
                   {THEME_DEFS.map((def) => (
                     <option key={def.id} value={def.id}>
-                      {def.label}
+                      {t(THEME_LABELS[def.id])}
                     </option>
                   ))}
                 </select>
@@ -2750,7 +2849,7 @@ function AppearanceTab() {
                 disabled={serverThemeBusy}
                 className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:opacity-50"
               >
-                Copy colors
+                {t("settings.appearance.customColorsCopy")}
               </button>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2770,21 +2869,21 @@ function AppearanceTab() {
                 disabled={serverThemeBusy}
                 className="rounded bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
               >
-                Save custom colors
+                {t("settings.appearance.customColorsSaveButton")}
               </button>
               <button
                 onClick={exportServerTheme}
                 disabled={serverThemeBusy}
                 className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:opacity-50"
               >
-                Export theme
+                {t("settings.appearance.customColorsExportTheme")}
               </button>
               <button
                 onClick={() => themeImportRef.current?.click()}
                 disabled={serverThemeBusy}
                 className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:opacity-50"
               >
-                Import theme
+                {t("settings.appearance.customColorsImportTheme")}
               </button>
               <input
                 ref={themeImportRef}
@@ -2801,7 +2900,7 @@ function AppearanceTab() {
                 disabled={serverThemeBusy}
                 className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:opacity-50"
               >
-                Reset
+                {t("common.reset")}
               </button>
             </div>
           </>
@@ -2811,17 +2910,47 @@ function AppearanceTab() {
   );
 }
 
-const SERVER_THEME_LABELS: Record<ServerThemeColorKey, string> = {
-  appBackground: "App background",
-  panelBackground: "Panel background",
-  userBubbleBackground: "User bubble",
-  assistantBubbleBackground: "Assistant bubble",
-  primaryText: "Text 1 — primary",
-  secondaryText: "Text 2 — secondary",
-  mutedText: "Text 3 — muted",
-  highlightBackground: "Highlight background",
-  highlightText: "Highlight text",
-  selectionBackground: "Selection background",
+/**
+ * `AuthStatus.source` values reported by the pi SDK (see auth-storage.d.ts).
+ * Mapped to locale keys with a raw fallback so an unrecognized future value
+ * still renders something meaningful instead of a blank.
+ */
+const CREDENTIAL_SOURCE_KEYS: Record<string, TranslateKey> = {
+  stored: "settings.credentialSource.stored",
+  runtime: "settings.credentialSource.runtime",
+  environment: "settings.credentialSource.environment",
+  fallback: "settings.credentialSource.fallback",
+  models_json_key: "settings.credentialSource.modelsJsonKey",
+  models_json_command: "settings.credentialSource.modelsJsonCommand",
+};
+
+function credentialSourceLabel(source: string, t: TFunction): string {
+  const key = CREDENTIAL_SOURCE_KEYS[source];
+  return key === undefined ? source : t(key);
+}
+
+/** Theme display names. Typed against the locale keys so a new theme id
+ *  fails `tsc` until both language files carry its label. */
+const THEME_LABELS: Record<ThemeId, TranslateKey> = {
+  dark: "settings.appearance.themes.dark",
+  light: "settings.appearance.themes.light",
+  dracula: "settings.appearance.themes.dracula",
+  "solarized-dark": "settings.appearance.themes.solarized-dark",
+  "catppuccin-mocha": "settings.appearance.themes.catppuccin-mocha",
+  "high-contrast": "settings.appearance.themes.high-contrast",
+};
+
+const SERVER_THEME_LABELS: Record<ServerThemeColorKey, TranslateKey> = {
+  appBackground: "settings.appearance.colorLabels.appBackground",
+  panelBackground: "settings.appearance.colorLabels.panelBackground",
+  userBubbleBackground: "settings.appearance.colorLabels.userBubbleBackground",
+  assistantBubbleBackground: "settings.appearance.colorLabels.assistantBubbleBackground",
+  primaryText: "settings.appearance.colorLabels.primaryText",
+  secondaryText: "settings.appearance.colorLabels.secondaryText",
+  mutedText: "settings.appearance.colorLabels.mutedText",
+  highlightBackground: "settings.appearance.colorLabels.highlightBackground",
+  highlightText: "settings.appearance.colorLabels.highlightText",
+  selectionBackground: "settings.appearance.colorLabels.selectionBackground",
 };
 
 const SERVER_THEME_BASE_COLORS: Record<ThemeId, ServerThemeColors> = {
@@ -2912,14 +3041,20 @@ function parseImportedServerTheme(
   fallbackDefaults: ServerThemeColors | undefined,
 ): { enabled: boolean; colors: ServerThemeColors } {
   const source = isObject(input) && isObject(input.colors) ? input.colors : input;
-  if (!isObject(source)) throw new Error("Theme import must be a JSON object with colors.");
+  if (!isObject(source)) {
+    throw new Error(translate("settings.appearance.customColorsImportRootError"));
+  }
   const defaults = fallbackDefaults ?? SERVER_THEME_BASE_COLORS.dark;
   const colors = { ...defaults };
   for (const key of SERVER_THEME_COLOR_KEYS) {
     const value = source[key];
     if (value === undefined) continue;
     if (typeof value !== "string" || !isHexColor(value)) {
-      throw new Error(`${SERVER_THEME_LABELS[key]} must be a 6-digit hex color like #0a0a0a.`);
+      throw new Error(
+        translate("settings.appearance.customColorsImportColorError", {
+          label: translate(SERVER_THEME_LABELS[key]),
+        }),
+      );
     }
     colors[key] = value;
   }
@@ -2940,11 +3075,14 @@ function ServerThemeColorField({
   defaultValue: string;
   onChange: (value: string) => void;
 }) {
+  const t = useT();
   return (
     <label className="flex items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-900/40 px-3 py-2">
       <div>
-        <div className="text-sm text-neutral-100">{SERVER_THEME_LABELS[colorKey]}</div>
-        <div className="font-mono text-[10px] text-neutral-500">Default {defaultValue}</div>
+        <div className="text-sm text-neutral-100">{t(SERVER_THEME_LABELS[colorKey])}</div>
+        <div className="font-mono text-[10px] text-neutral-500">
+          {t("settings.appearance.customColorsDefaultValue", { value: defaultValue })}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -3001,6 +3139,7 @@ function ThemeSwatch({ id }: { id: ThemeId }) {
  * edit).
  */
 function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [lastExport, setLastExport] = useState<{ filename: string; files: string[] } | undefined>(
     undefined,
@@ -3050,7 +3189,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
       requestAnimationFrame(() => URL.revokeObjectURL(url));
       setLastExport({ filename, files });
     } catch (err) {
-      onError(`Export failed: ${errorCode(err)}`);
+      onError(t("settings.errors.exportFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3064,7 +3203,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
       const summary = await api.importConfig(file);
       setLastImport(summary);
     } catch (err) {
-      onError(`Import failed: ${errorCode(err)}`);
+      onError(t("settings.errors.importFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -3099,7 +3238,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
       if (err instanceof ApiError && err.code === "skills_directory_empty") {
         setLastSkillsExport({ filename: "", fileCount: 0 });
       } else {
-        onError(`Skills export failed: ${errorCode(err)}`);
+        onError(t("settings.errors.skillsExportFailed", { code: errorCode(err) }));
       }
     } finally {
       setBusy(false);
@@ -3115,7 +3254,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
       const summary = await api.importSkills(files);
       setLastSkillsImport(summary);
     } catch (err) {
-      onError(`Skills import failed: ${errorCode(err)}`);
+      onError(t("settings.errors.skillsImportFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
       if (skillsTarInputRef.current) skillsTarInputRef.current.value = "";
@@ -3126,42 +3265,58 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="mb-2 text-sm font-medium text-neutral-100">Export config</h3>
+        <h3 className="mb-2 text-sm font-medium text-neutral-100">
+          {t("settings.backup.exportConfigTitle")}
+        </h3>
         <p className="mb-3 text-xs text-neutral-400">
-          Downloads a <code className="font-mono">.tar.gz</code> with{" "}
-          <code className="font-mono">mcp.json</code>,{" "}
-          <code className="font-mono">settings.json</code>,{" "}
-          <code className="font-mono">models.json</code>,{" "}
-          <code className="font-mono">skills-overrides.json</code>,{" "}
-          <code className="font-mono">tool-overrides.json</code>, and{" "}
-          <code className="font-mono">quick-actions.json</code>. Provider auth (
-          <code className="font-mono">auth.json</code> — API keys, OAuth tokens) is{" "}
-          <strong>not</strong> included; re-authenticate providers after restoring on a new install.
+          {t("settings.backup.exportIntroA")}
+          <code className="font-mono">.tar.gz</code>
+          {t("settings.backup.exportIntroB")}
+          <code className="font-mono">mcp.json</code>
+          {t("settings.backup.listSep")}
+          <code className="font-mono">settings.json</code>
+          {t("settings.backup.listSep")}
+          <code className="font-mono">models.json</code>
+          {t("settings.backup.listSep")}
+          <code className="font-mono">skills-overrides.json</code>
+          {t("settings.backup.listSep")}
+          <code className="font-mono">tool-overrides.json</code>
+          {t("settings.backup.listSepLast")}
+          <code className="font-mono">quick-actions.json</code>
+          {t("settings.backup.exportAuthPrefix")}
+          <code className="font-mono">auth.json</code>
+          {t("settings.backup.exportAuthMid")}
+          <strong>{t("settings.backup.notWord")}</strong>
+          {t("settings.backup.exportAuthSuffix")}
         </p>
         <button
           onClick={() => void onExport()}
           disabled={busy}
           className="rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 hover:border-neutral-500 disabled:opacity-50"
         >
-          {busy ? "Exporting…" : "Download config archive"}
+          {busy ? t("settings.backup.exporting") : t("settings.backup.downloadConfig")}
         </button>
         {lastExport !== undefined && (
           <p className="mt-2 text-xs text-emerald-400 light:text-emerald-700">
-            Exported <code className="font-mono">{lastExport.filename}</code> (
+            {t("settings.backup.exportedPrefix")}
+            <code className="font-mono">{lastExport.filename}</code>
+            {t("settings.backup.exportedMid")}
             {lastExport.files.length === 0
-              ? "no files were on disk"
-              : `included: ${lastExport.files.join(", ")}`}
-            )
+              ? t("settings.backup.noFilesOnDisk")
+              : t("settings.backup.includedFiles", { files: lastExport.files.join(", ") })}
+            {t("settings.backup.exportedSuffix")}
           </p>
         )}
       </section>
 
       <section>
-        <h3 className="mb-2 text-sm font-medium text-neutral-100">Import config</h3>
+        <h3 className="mb-2 text-sm font-medium text-neutral-100">
+          {t("settings.backup.importConfigTitle")}
+        </h3>
         <p className="mb-3 text-xs text-neutral-400">
-          Restores a previously-exported archive. Each file is parsed before any disk write — if any
-          file fails validation, <strong>nothing</strong> is imported. Existing live agent sessions
-          keep their original settings until restarted.
+          {t("settings.backup.importIntroPrefix")}
+          <strong>{t("settings.backup.nothingWord")}</strong>
+          {t("settings.backup.importIntroSuffix")}
         </p>
         <input
           ref={fileInputRef}
@@ -3178,18 +3333,19 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
           <div className="mt-3 space-y-1 text-xs">
             {lastImport.imported.length > 0 && (
               <p className="text-emerald-400 light:text-emerald-700">
-                Imported: <code className="font-mono">{lastImport.imported.join(", ")}</code>
+                {t("settings.backup.importedLabel")}
+                <code className="font-mono">{lastImport.imported.join(", ")}</code>
               </p>
             )}
             {lastImport.skipped.length > 0 && (
               <p className="text-amber-400 light:text-amber-700">
-                Skipped (not in allow-list):{" "}
+                {t("settings.backup.skippedLabel")}
                 <code className="font-mono">{lastImport.skipped.join(", ")}</code>
               </p>
             )}
             {lastImport.errors.length > 0 && (
               <div className="text-red-400">
-                <p>Errors — nothing was written:</p>
+                <p>{t("settings.backup.errorsLabel")}</p>
                 <ul className="ml-4 list-disc">
                   {lastImport.errors.map((e) => (
                     <li key={e.file}>
@@ -3202,55 +3358,66 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
             {lastImport.imported.length === 0 &&
               lastImport.errors.length === 0 &&
               lastImport.skipped.length === 0 && (
-                <p className="italic text-neutral-500">Archive was empty.</p>
+                <p className="italic text-neutral-500">{t("settings.backup.archiveEmpty")}</p>
               )}
           </div>
         )}
       </section>
 
       <section>
-        <h3 className="mb-2 text-sm font-medium text-neutral-100">Export skills</h3>
+        <h3 className="mb-2 text-sm font-medium text-neutral-100">
+          {t("settings.backup.exportSkillsTitle")}
+        </h3>
         <p className="mb-3 text-xs text-neutral-400">
-          Downloads a <code className="font-mono">.tar.gz</code> of every file under{" "}
-          <code className="font-mono">~/.pi/agent/skills/</code> — both single-file (
-          <code className="font-mono">{`<name>.md`}</code>) and directory skills (
-          <code className="font-mono">{`<name>/SKILL.md`}</code> + assets) round-trip verbatim.
+          {t("settings.backup.skillsExportIntroA")}
+          <code className="font-mono">.tar.gz</code>
+          {t("settings.backup.skillsExportIntroB")}
+          <code className="font-mono">~/.pi/agent/skills/</code>
+          {t("settings.backup.skillsExportIntroC")}
+          <code className="font-mono">{`<name>.md`}</code>
+          {t("settings.backup.skillsExportIntroD")}
+          <code className="font-mono">{`<name>/SKILL.md`}</code>
+          {t("settings.backup.skillsExportIntroSuffix")}
         </p>
         <button
           onClick={() => void onExportSkills()}
           disabled={busy}
           className="rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-100 hover:border-neutral-500 disabled:opacity-50"
         >
-          {busy ? "Working…" : "Download skills archive"}
+          {busy ? t("settings.backup.working") : t("settings.backup.downloadSkills")}
         </button>
         {lastSkillsExport !== undefined &&
           (lastSkillsExport.fileCount === 0 ? (
             // Empty-skills sentinel: server returned 409
             // skills_directory_empty. Show as a neutral info line, not
             // an error — there's nothing wrong, just nothing to ship.
-            <p className="mt-2 text-xs text-neutral-400">
-              No skills to export — your skills directory is empty.
-            </p>
+            <p className="mt-2 text-xs text-neutral-400">{t("settings.backup.skillsEmpty")}</p>
           ) : (
             <p className="mt-2 text-xs text-emerald-400 light:text-emerald-700">
-              Exported <code className="font-mono">{lastSkillsExport.filename}</code> (
-              {lastSkillsExport.fileCount} file{lastSkillsExport.fileCount === 1 ? "" : "s"} packed)
+              {t("settings.backup.exportedPrefix")}
+              <code className="font-mono">{lastSkillsExport.filename}</code>
+              {t("settings.backup.exportedMid")}
+              {t.plural("settings.backup.skillsPacked", lastSkillsExport.fileCount)}
+              {t("settings.backup.exportedSuffix")}
             </p>
           ))}
       </section>
 
       <section>
-        <h3 className="mb-2 text-sm font-medium text-neutral-100">Import skills</h3>
+        <h3 className="mb-2 text-sm font-medium text-neutral-100">
+          {t("settings.backup.importSkillsTitle")}
+        </h3>
         <p className="mb-3 text-xs text-neutral-400">
-          Restore skills from a previously-exported <code className="font-mono">.tar.gz</code>, OR
-          upload a folder of skill files directly. Existing files at the same path are{" "}
-          <strong>overwritten</strong>; new files are added. Path traversal and absolute paths are
-          rejected.
+          {t("settings.backup.skillsImportIntro")}
+          <code className="font-mono">.tar.gz</code>
+          {t("settings.backup.skillsImportMid")}
+          <strong>{t("settings.backup.overwrittenWord")}</strong>
+          {t("settings.backup.skillsImportSuffix")}
         </p>
         <div className="space-y-3">
           <label className="block space-y-1">
             <span className="text-[11px] uppercase tracking-wider text-neutral-500">
-              From tar.gz
+              {t("settings.backup.fromTarGz")}
             </span>
             <input
               ref={skillsTarInputRef}
@@ -3266,7 +3433,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
           </label>
           <label className="block space-y-1">
             <span className="text-[11px] uppercase tracking-wider text-neutral-500">
-              From folder (Chromium / WebKit only)
+              {t("settings.backup.fromFolder")}
             </span>
             <input
               ref={skillsFolderInputRef}
@@ -3292,17 +3459,13 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
           <div className="mt-3 space-y-1 text-xs">
             {lastSkillsImport.imported.length > 0 && (
               <p className="text-emerald-400 light:text-emerald-700">
-                Imported {lastSkillsImport.imported.length} file
-                {lastSkillsImport.imported.length === 1 ? "" : "s"}:{" "}
+                {t.plural("settings.backup.skillsImportedCount", lastSkillsImport.imported.length)}{" "}
                 <code className="font-mono">{lastSkillsImport.imported.join(", ")}</code>
               </p>
             )}
             {lastSkillsImport.skipped.length > 0 && (
               <div className="text-amber-400 light:text-amber-700">
-                <p>
-                  Skipped {lastSkillsImport.skipped.length} entr
-                  {lastSkillsImport.skipped.length === 1 ? "y" : "ies"}:
-                </p>
+                <p>{t.plural("settings.backup.skippedCount", lastSkillsImport.skipped.length)}</p>
                 <ul className="ml-4 list-disc">
                   {lastSkillsImport.skipped.map((s) => (
                     <li key={s.name}>
@@ -3313,7 +3476,7 @@ function BackupTab({ onError }: { onError: (msg: string | undefined) => void }) 
               </div>
             )}
             {lastSkillsImport.imported.length === 0 && lastSkillsImport.skipped.length === 0 && (
-              <p className="italic text-neutral-500">No files were imported.</p>
+              <p className="italic text-neutral-500">{t("settings.backup.noneImported")}</p>
             )}
           </div>
         )}
@@ -3398,6 +3561,7 @@ function parseArgs(text: string): string[] {
 }
 
 function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const project = useActiveProject();
   const projects = useProjectStore((s) => s.projects);
   // All polled state lives in mcp-store now (single 30s ticker shared
@@ -3471,13 +3635,13 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
     } catch (err) {
       // Tools listing is best-effort — failure shouldn't block the
       // server config UI from rendering. Surface but don't block.
-      onError(`Failed to load tool listing: ${errorCode(err)}`);
+      onError(t("settings.errors.loadToolListing", { code: errorCode(err) }));
     }
   };
 
   useEffect(() => {
     void refreshProject(project?.id).catch((err: unknown) => {
-      onError(`Failed to load MCP config: ${errorCode(err)}`);
+      onError(t("settings.errors.loadMcpConfig", { code: errorCode(err) }));
     });
     void refreshTools();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3491,7 +3655,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       // refreshProject pulls in updated status counts.
       await refreshProject(project?.id);
     } catch (err) {
-      onError(`Failed to toggle MCP: ${errorCode(err)}`);
+      onError(t("settings.errors.toggleMcpFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3504,7 +3668,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       setTruncationMaxDraft(undefined);
       onError(undefined);
     } catch (err) {
-      onError(`Failed to update MCP truncation: ${errorCode(err)}`);
+      onError(t("settings.errors.updateMcpTruncation", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3523,7 +3687,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       setSpoolingDirectoryDraft(undefined);
       onError(undefined);
     } catch (err) {
-      onError(`Failed to update MCP spooling: ${errorCode(err)}`);
+      onError(t("settings.mcp.spoolingSaveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3537,7 +3701,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       await upsertServer(name, { ...prev, enabled: next });
       onError(undefined);
     } catch (err) {
-      onError(`Failed to update server: ${errorCode(err)}`);
+      onError(t("settings.errors.updateServerFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3571,15 +3735,15 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
   const saveDraft = async (): Promise<void> => {
     if (draft === undefined) return;
     if (draft.name.trim().length === 0) {
-      onError("Name is required.");
+      onError(t("settings.mcp.nameRequired"));
       return;
     }
     if (draft.kind === "remote" && draft.url.trim().length === 0) {
-      onError("URL is required for remote servers.");
+      onError(t("settings.mcp.urlRequired"));
       return;
     }
     if (draft.kind === "stdio" && draft.command.trim().length === 0) {
-      onError("Command is required for stdio servers.");
+      onError(t("settings.mcp.commandRequired"));
       return;
     }
     const body: McpServerConfig = { enabled: draft.enabled };
@@ -3616,20 +3780,20 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       setDraft(undefined);
       setEditingName(undefined);
     } catch (err) {
-      onError(`Failed to save server: ${errorCode(err)}`);
+      onError(t("settings.errors.saveServerFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
   };
 
   const removeServer = async (name: string): Promise<void> => {
-    if (!window.confirm(`Remove MCP server '${name}' from the global registry?`)) return;
+    if (!window.confirm(t("settings.mcp.confirmRemove", { name }))) return;
     setBusy(true);
     try {
       await deleteServer(name);
       onError(undefined);
     } catch (err) {
-      onError(`Failed to remove server: ${errorCode(err)}`);
+      onError(t("settings.errors.removeServerFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3644,7 +3808,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       // server populates its tools). Refresh in the background.
       void refreshTools();
     } catch (err) {
-      onError(`Probe failed for '${name}': ${errorCode(err)}`);
+      onError(t("settings.errors.probeFailed", { name, code: errorCode(err) }));
     } finally {
       setProbing(undefined);
     }
@@ -3656,7 +3820,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       await api.setToolEnabled("mcp", fqn, nextEnabled, "global");
       await refreshTools();
     } catch (err) {
-      onError(`Toggle failed: ${errorCode(err)}`);
+      onError(t("settings.errors.toggleFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3676,7 +3840,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       }
       await refreshTools();
     } catch (err) {
-      onError(`Override write failed: ${errorCode(err)}`);
+      onError(t("settings.errors.overrideWriteFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -3692,7 +3856,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
   };
 
   if (settings === undefined) {
-    return <p className="text-xs italic text-neutral-500">Loading MCP config…</p>;
+    return <p className="text-xs italic text-neutral-500">{t("settings.mcp.loading")}</p>;
   }
 
   const enabled = settings.enabled;
@@ -3702,19 +3866,18 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-neutral-500">
-        MCP servers extend the agent with custom tools. Servers configured here are loaded by every
-        new session. Project-scoped servers in <code className="font-mono">.mcp.json</code> at the
-        project root are also loaded for sessions in that project (project entries override globals
-        on name collision).
+        {t("settings.mcp.introPrefix")}
+        <code className="font-mono">.mcp.json</code>
+        {t("settings.mcp.introSuffix")}
       </p>
 
       <div className="space-y-3 rounded border border-neutral-800 bg-neutral-900/40 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-neutral-100">MCP tools</div>
-            <div className="text-[11px] text-neutral-500">
-              Master switch. When off, no MCP tools reach the agent regardless of per-server state.
+            <div className="text-sm font-medium text-neutral-100">
+              {t("settings.mcp.masterTitle")}
             </div>
+            <div className="text-[11px] text-neutral-500">{t("settings.mcp.masterHint")}</div>
           </div>
           <button
             onClick={() => void toggleMaster(!enabled)}
@@ -3725,20 +3888,23 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
                 : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
             }`}
           >
-            {enabled ? "Enabled" : "Disabled"}
+            {enabled ? t("common.enabled") : t("common.disabled")}
           </button>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-3 border-t border-neutral-800 pt-3">
           <div className="min-w-[240px] flex-1">
-            <div className="text-sm font-medium text-neutral-100">Result spooling</div>
+            <div className="text-sm font-medium text-neutral-100">
+              {t("settings.mcp.spoolingTitle")}
+            </div>
             <div className="text-[11px] text-neutral-500">
-              Writes oversized successful MCP results to workspace files before truncation. Default:
-              <code className="ml-1 font-mono">&lt;workspace&gt;/.mcp-results/</code>.
+              {t("settings.mcp.spoolingHint")}
+              <code className="ml-1 font-mono">&lt;workspace&gt;/.mcp-results/</code>
+              {t("settings.mcp.spoolingHintSuffix")}
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <label className="text-[11px] text-neutral-500" htmlFor="mcp-spooling-threshold">
-              Threshold chars
+              {t("settings.mcp.spoolingThresholdLabel")}
             </label>
             <input
               id="mcp-spooling-threshold"
@@ -3766,7 +3932,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
               className="w-28 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-100 disabled:opacity-50"
             />
             <label className="text-[11px] text-neutral-500" htmlFor="mcp-spooling-directory">
-              Directory
+              {t("settings.mcp.spoolingDirectoryLabel")}
             </label>
             <input
               id="mcp-spooling-directory"
@@ -3796,21 +3962,24 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
                   })
                 }
               />
-              <span>{settings.spooling.enabled ? "Spooling" : "Inline only"}</span>
+              <span>
+                {settings.spooling.enabled
+                  ? t("settings.mcp.spoolingOn")
+                  : t("settings.mcp.spoolingOff")}
+              </span>
             </label>
           </div>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-3 border-t border-neutral-800 pt-3">
           <div className="min-w-[240px] flex-1">
-            <div className="text-sm font-medium text-neutral-100">Result truncation</div>
-            <div className="text-[11px] text-neutral-500">
-              Caps total text returned by each MCP tool before it enters agent context. Images pass
-              through unchanged. Disable only for trusted, bounded tools.
+            <div className="text-sm font-medium text-neutral-100">
+              {t("settings.mcp.truncationTitle")}
             </div>
+            <div className="text-[11px] text-neutral-500">{t("settings.mcp.truncationHint")}</div>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-[11px] text-neutral-500" htmlFor="mcp-truncation-max">
-              Max chars
+              {t("settings.mcp.maxChars")}
             </label>
             <input
               id="mcp-truncation-max"
@@ -3849,7 +4018,11 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
                   })
                 }
               />
-              <span>{settings.truncation.enabled ? "Truncating" : "Pass-through"}</span>
+              <span>
+                {settings.truncation.enabled
+                  ? t("settings.mcp.truncating")
+                  : t("settings.mcp.passThrough")}
+              </span>
             </label>
           </div>
         </div>
@@ -3869,17 +4042,13 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
               await grantStdioTrust(project.id);
               onError(undefined);
             } catch (err) {
-              onError(`Failed to grant trust: ${errorCode(err)}`);
+              onError(t("settings.errors.grantTrustFailed", { code: errorCode(err) }));
             } finally {
               setBusy(false);
             }
           }}
           onRevoke={async () => {
-            if (
-              !window.confirm(
-                `Revoke stdio MCP trust for "${project.name}"? This disconnects every running project-scoped MCP server.`,
-              )
-            ) {
+            if (!window.confirm(t("settings.mcp.confirmRevokeTrust", { name: project.name }))) {
               return;
             }
             setBusy(true);
@@ -3887,7 +4056,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
               await revokeStdioTrust(project.id);
               onError(undefined);
             } catch (err) {
-              onError(`Failed to revoke trust: ${errorCode(err)}`);
+              onError(t("settings.errors.revokeTrustFailed", { code: errorCode(err) }));
             } finally {
               setBusy(false);
             }
@@ -3896,8 +4065,8 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       )}
 
       <McpServerList
-        title="Global servers"
-        emptyHint="No global MCP servers configured. Click 'Add server' to add one."
+        title={t("settings.mcp.globalServers")}
+        emptyHint={t("settings.mcp.noGlobalServers")}
         servers={globalStatus.map((s) => ({ status: s, config: servers[s.name] }))}
         editable
         editingName={editingName ?? null}
@@ -3920,13 +4089,16 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
 
       {project !== undefined && (
         <McpServerList
-          title={`Project servers (${project.name})`}
+          title={t("settings.mcp.projectServers", { name: project.name })}
           emptyHint={
             <>
-              No project servers. Add a <code className="font-mono">.mcp.json</code> file at the
-              project root to define some — supports both{" "}
-              <code className="font-mono">{`{ servers: {...} }`}</code> and the standard{" "}
-              <code className="font-mono">{`{ mcpServers: {...} }`}</code> shape.
+              {t("settings.mcp.noProjectServersPrefix")}
+              <code className="font-mono">.mcp.json</code>
+              {t("settings.mcp.noProjectServersMid")}
+              <code className="font-mono">{`{ servers: {...} }`}</code>
+              {t("settings.mcp.noProjectServersMid2")}
+              <code className="font-mono">{`{ mcpServers: {...} }`}</code>
+              {t("settings.mcp.noProjectServersSuffix")}
             </>
           }
           servers={projectStatus.map((s) => ({ status: s, config: undefined }))}
@@ -3951,7 +4123,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
           onClick={startAdd}
           className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:border-neutral-500"
         >
-          + Add server
+          {t("settings.mcp.addServer")}
         </button>
       ) : (
         <McpDraftForm
@@ -4029,6 +4201,7 @@ function McpServerList(props: {
   onEdit?: (name: string) => void;
   onRemove?: (name: string) => void;
 }) {
+  const t = useT();
   return (
     <section className="space-y-2">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
@@ -4070,9 +4243,9 @@ function McpServerList(props: {
                         title={
                           canExpand
                             ? expanded
-                              ? "Hide tools"
-                              : "Show tools"
-                            : "No tools to show (server not connected or empty)"
+                              ? t("settings.mcpList.hideTools")
+                              : t("settings.mcpList.showTools")
+                            : t("settings.mcpList.noTools")
                         }
                       >
                         {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -4082,7 +4255,9 @@ function McpServerList(props: {
                       <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400">
                         {s.transport ?? "auto"}
                       </span>
-                      <span className="text-[11px] text-neutral-500">{s.toolCount} tools</span>
+                      <span className="text-[11px] text-neutral-500">
+                        {t.plural("settings.mcpList.toolCount", s.toolCount)}
+                      </span>
                     </div>
                     <div className="flex shrink-0 items-center gap-1 text-xs">
                       {props.editable && props.onToggle !== undefined && (
@@ -4094,23 +4269,23 @@ function McpServerList(props: {
                               : "border-neutral-700 text-neutral-400 hover:border-neutral-500"
                           }`}
                         >
-                          {s.enabled ? "Enabled" : "Disabled"}
+                          {s.enabled ? t("common.enabled") : t("common.disabled")}
                         </button>
                       )}
                       <button
                         onClick={() => props.onProbe(s.name)}
                         disabled={isProbing}
                         className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500 disabled:opacity-50"
-                        title="Reconnect and refresh tool list"
+                        title={t("settings.mcpList.probeTitle")}
                       >
-                        {isProbing ? "Probing…" : "Probe"}
+                        {isProbing ? t("settings.mcpList.probing") : t("settings.mcpList.probe")}
                       </button>
                       {props.editable && props.onEdit !== undefined && (
                         <button
                           onClick={() => props.onEdit?.(s.name)}
                           className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                       )}
                       {props.editable && props.onRemove !== undefined && (
@@ -4118,7 +4293,7 @@ function McpServerList(props: {
                           onClick={() => props.onRemove?.(s.name)}
                           className="rounded border border-red-700/50 px-2 py-0.5 text-red-300 hover:bg-red-900/20"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                       )}
                     </div>
@@ -4147,23 +4322,23 @@ function McpServerList(props: {
                 {expanded && canExpand && (
                   <div className="space-y-2 border-t border-neutral-800 bg-neutral-950/40 px-3 py-2">
                     <div className="text-[10px] uppercase tracking-wider text-neutral-500">
-                      Tools
+                      {t("settings.mcpList.toolsHeader")}
                     </div>
                     <div className="space-y-2">
-                      {tools.map((t) => (
+                      {tools.map((tool) => (
                         <ToolCascadeRow
-                          key={`mcp:${t.name}`}
+                          key={`mcp:${tool.name}`}
                           family="mcp"
-                          name={t.shortName}
-                          fqn={t.name}
-                          description={t.description}
-                          globalEnabled={t.globalEnabled}
+                          name={tool.shortName}
+                          fqn={tool.name}
+                          description={tool.description}
+                          globalEnabled={tool.globalEnabled}
                           projects={props.projects}
                           allOverrides={props.allOverrides}
                           busy={props.busy}
-                          onToggleGlobal={(next) => props.onToggleToolGlobal(t.name, next)}
+                          onToggleGlobal={(next) => props.onToggleToolGlobal(tool.name, next)}
                           onSetProjectOverride={(projectId, state) =>
-                            props.onSetProjectToolOverride(projectId, t.name, state)
+                            props.onSetProjectToolOverride(projectId, tool.name, state)
                           }
                         />
                       ))}
@@ -4215,21 +4390,24 @@ function StdioTrustBanner(props: {
   onRevoke: () => void | Promise<void>;
 }) {
   const appName = useUiConfigStore((s) => s.appName);
+  const t = useT();
   if (props.trusted) {
     return (
       <div className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-900/40 px-3 py-1.5 text-[11px] text-neutral-500">
         <span>
-          Stdio MCP trust granted for{" "}
-          <strong className="text-neutral-300">{props.projectName}</strong>. Project-local stdio MCP
-          servers from <code className="font-mono">.mcp.json</code> will spawn on session create.
+          {t("settings.mcpTrust.grantedPrefix")}
+          <strong className="text-neutral-300">{props.projectName}</strong>
+          {t("settings.mcpTrust.grantedMid")}
+          <code className="font-mono">.mcp.json</code>
+          {t("settings.mcpTrust.grantedSuffix")}
         </span>
         <button
           onClick={() => void props.onRevoke()}
           disabled={props.busy}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-400 hover:border-neutral-500 hover:text-neutral-200 disabled:opacity-50"
-          title="Disconnects every running project-scoped MCP server"
+          title={t("settings.mcpTrust.revokeTitle")}
         >
-          Revoke
+          {t("settings.mcpTrust.revoke")}
         </button>
       </div>
     );
@@ -4240,16 +4418,17 @@ function StdioTrustBanner(props: {
   return (
     <div className="rounded border border-amber-700/40 bg-amber-900/20 p-3 text-xs text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
       <div className="mb-2 font-medium">
-        This project wants to spawn {props.gatedCount} stdio MCP server
-        {props.gatedCount === 1 ? "" : "s"}.
+        {t.plural("settings.mcpTrust.wantsSpawn", props.gatedCount)}
       </div>
       <p className="text-[11px] leading-relaxed">
-        <strong>{props.projectName}</strong>'s <code className="font-mono">.mcp.json</code> declares
-        MCP server{props.gatedCount === 1 ? "" : "s"} that {appName} would launch as local
-        subprocess{props.gatedCount === 1 ? "" : "es"}. Stdio MCP runs arbitrary commands on this
-        machine with whatever env you've passed through — only trust projects whose{" "}
-        <code className="font-mono">.mcp.json</code> you've reviewed and approve of. Remote (URL)
-        entries in this project are unaffected by this gate.
+        <strong>{props.projectName}</strong>
+        {t("settings.mcpTrust.declaresVerb")}
+        <code className="font-mono">.mcp.json</code>
+        {t.plural("settings.mcpTrust.declaresServers", props.gatedCount)}
+        {t.plural("settings.mcpTrust.launchSuffix", props.gatedCount, { brand: appName })}
+        {t("settings.mcpTrust.runsWarningPrefix")}
+        <code className="font-mono">.mcp.json</code>
+        {t("settings.mcpTrust.runsWarningSuffix")}
       </p>
       <div className="mt-2 flex gap-2">
         <button
@@ -4257,7 +4436,7 @@ function StdioTrustBanner(props: {
           disabled={props.busy}
           className="rounded bg-amber-200 px-3 py-1 text-[11px] font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 light:bg-amber-600 light:text-amber-50 light:hover:bg-amber-700"
         >
-          {props.busy ? "Granting…" : "Trust this project"}
+          {props.busy ? t("settings.mcpTrust.granting") : t("settings.mcpTrust.trustProject")}
         </button>
       </div>
     </div>
@@ -4272,6 +4451,7 @@ function McpDraftForm(props: {
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const { draft, busy } = props;
   const setField = <K extends keyof McpDraft>(key: K, value: McpDraft[K]): void => {
     props.onChange({ ...draft, [key]: value });
@@ -4279,14 +4459,16 @@ function McpDraftForm(props: {
   return (
     <div className="rounded border border-neutral-700 bg-neutral-900 p-3">
       <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-        {props.isEditing ? `Edit '${draft.name}'` : "Add MCP server"}
+        {props.isEditing
+          ? t("settings.mcpForm.editTitle", { name: draft.name })
+          : t("settings.mcpForm.addTitle")}
       </h4>
 
       {/* Kind selector — locked on edit to prevent silently moving a
           remote server to stdio (which would drop its URL/headers on
           save and re-spawn nothing useful). Delete + re-add to swap. */}
       <div className="mb-3 flex items-center gap-3 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-        <span className="text-neutral-500">Type</span>
+        <span className="text-neutral-500">{t("settings.mcpForm.kindLabel")}</span>
         <label
           className={`flex items-center gap-1.5 ${props.isEditing ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
         >
@@ -4297,7 +4479,7 @@ function McpDraftForm(props: {
             disabled={props.isEditing}
             onChange={() => setField("kind", "remote")}
           />
-          <span>Remote URL</span>
+          <span>{t("settings.mcpForm.kindRemote")}</span>
         </label>
         <label
           className={`flex items-center gap-1.5 ${props.isEditing ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
@@ -4309,17 +4491,17 @@ function McpDraftForm(props: {
             disabled={props.isEditing}
             onChange={() => setField("kind", "stdio")}
           />
-          <span>Local subprocess (stdio)</span>
+          <span>{t("settings.mcpForm.kindStdio")}</span>
         </label>
         {props.isEditing && (
           <span className="text-[10px] italic text-neutral-600">
-            Locked while editing — delete and re-add to change type.
+            {t("settings.mcpForm.kindLocked")}
           </span>
         )}
       </div>
 
       <div className="grid grid-cols-[80px_1fr] items-center gap-2 text-xs">
-        <label className="text-neutral-500">Name</label>
+        <label className="text-neutral-500">{t("common.name")}</label>
         <input
           value={draft.name}
           onChange={(e) => setField("name", e.target.value)}
@@ -4330,24 +4512,24 @@ function McpDraftForm(props: {
 
         {draft.kind === "remote" ? (
           <>
-            <label className="text-neutral-500">URL</label>
+            <label className="text-neutral-500">{t("common.url")}</label>
             <input
               value={draft.url}
               onChange={(e) => setField("url", e.target.value)}
               placeholder="https://mcp.example.com/sse"
               className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-neutral-100 outline-none focus:border-neutral-500"
             />
-            <label className="text-neutral-500">Transport</label>
+            <label className="text-neutral-500">{t("settings.mcpForm.transport")}</label>
             <select
               value={draft.transport}
               onChange={(e) => setField("transport", e.target.value as McpTransport)}
               className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-neutral-100 outline-none focus:border-neutral-500"
             >
-              <option value="auto">auto (StreamableHTTP, fall back to SSE)</option>
+              <option value="auto">{t("settings.mcpForm.transportAuto")}</option>
               <option value="streamable-http">streamable-http</option>
               <option value="sse">sse</option>
             </select>
-            <label className="text-neutral-500">HTTPS certs</label>
+            <label className="text-neutral-500">{t("settings.mcpForm.httpsCerts")}</label>
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -4361,14 +4543,14 @@ function McpDraftForm(props: {
           </>
         ) : (
           <>
-            <label className="text-neutral-500">Command</label>
+            <label className="text-neutral-500">{t("common.command")}</label>
             <input
               value={draft.command}
               onChange={(e) => setField("command", e.target.value)}
-              placeholder="npx (or absolute path to a binary)"
+              placeholder={t("settings.mcpForm.commandPlaceholder")}
               className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-neutral-100 outline-none focus:border-neutral-500"
             />
-            <label className="self-start pt-1 text-neutral-500">Args</label>
+            <label className="self-start pt-1 text-neutral-500">{t("settings.mcpForm.args")}</label>
             <textarea
               value={draft.argsText}
               onChange={(e) => setField("argsText", e.target.value)}
@@ -4381,22 +4563,20 @@ function McpDraftForm(props: {
             <input
               value={draft.cwd}
               onChange={(e) => setField("cwd", e.target.value)}
-              placeholder="(blank ↦ default: project path for project servers)"
+              placeholder={t("settings.mcpForm.cwdPlaceholder")}
               className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-neutral-100 outline-none focus:border-neutral-500"
             />
           </>
         )}
 
-        <label className="text-neutral-500">Enabled</label>
+        <label className="text-neutral-500">{t("common.enabled")}</label>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={draft.enabled}
             onChange={(e) => setField("enabled", e.target.checked)}
           />
-          <span className="text-[11px] text-neutral-500">
-            Disabled servers don't connect or contribute tools.
-          </span>
+          <span className="text-[11px] text-neutral-500">{t("settings.mcpForm.disabledHint")}</span>
         </label>
       </div>
 
@@ -4404,8 +4584,9 @@ function McpDraftForm(props: {
         <HeaderRowsEditor rows={draft.headers} onChange={(next) => setField("headers", next)} />
       ) : (
         <SecretRowsEditor
-          label="Env"
-          emptyHint="No env. Add API keys / config your subprocess needs (PATH / HOME / locale are inherited automatically)."
+          label={t("settings.mcpForm.env")}
+          addLabel={t("settings.mcpForm.envSingular")}
+          emptyHint={t("settings.mcpForm.noEnv")}
           keyPlaceholder="GITHUB_TOKEN"
           valuePlaceholder="ghp_…"
           rows={draft.env}
@@ -4418,14 +4599,14 @@ function McpDraftForm(props: {
           onClick={props.onCancel}
           className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-500"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           onClick={props.onSave}
           disabled={busy}
           className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </div>
@@ -4433,24 +4614,25 @@ function McpDraftForm(props: {
 }
 
 function HeaderRowsEditor(props: { rows: HeaderRow[]; onChange: (next: HeaderRow[]) => void }) {
+  const t = useT();
   const appName = useUiConfigStore((s) => s.appName);
   const { rows } = props;
   return (
     <div className="mt-3">
       <div className="mb-1 flex items-center justify-between">
         <h5 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-          Headers
+          {t("settings.mcpForm.headers")}
         </h5>
         <button
           onClick={() => props.onChange([...rows, { key: "", value: "", source: "literal" }])}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
         >
-          + Header
+          {t("settings.mcpForm.addHeader")}
         </button>
       </div>
       {rows.length === 0 && (
         <p className="text-[11px] italic text-neutral-600">
-          No headers. Add literal auth headers or reference an env var such as MY_MCP_TOKEN.
+          {t("settings.mcpForm.noHeadersLiteral")}
         </p>
       )}
       {rows.map((r, i) => (
@@ -4497,19 +4679,18 @@ function HeaderRowsEditor(props: { rows: HeaderRow[]; onChange: (next: HeaderRow
           <button
             onClick={() => props.onChange(rows.filter((_, j) => j !== i))}
             className="rounded border border-neutral-700 px-2 text-[11px] text-neutral-400 hover:text-red-300 light:hover:text-red-700"
-            title="Remove header"
+            title={t("settings.mcpForm.removeHeader")}
           >
             ×
           </button>
         </div>
       ))}
       <p className="mt-1 text-[10px] text-neutral-500">
-        Env-backed headers store only the variable name; {appName} resolves the value when sending
-        MCP requests.
+        {t("settings.mcpForm.envBackedNote", { brand: appName })}
       </p>
       {rows.some((r) => r.value === SECRET_PLACEHOLDER) && (
         <p className="mt-1 text-[10px] italic text-neutral-500">
-          Literal values with the redaction sentinel keep their stored value when you save.
+          {t("settings.secretRows.sentinelHint")}
         </p>
       )}
     </div>
@@ -4523,12 +4704,17 @@ function HeaderRowsEditor(props: { rows: HeaderRow[]; onChange: (next: HeaderRow
  */
 function SecretRowsEditor(props: {
   label: string;
+  /** Singular of `label` for the "+ …" add-row button. Passed in rather
+   *  than derived from `label` because the label is translated and no
+   *  longer ends in an ASCII "s". */
+  addLabel: string;
   emptyHint: string;
   keyPlaceholder: string;
   valuePlaceholder: string;
   rows: SecretRow[];
   onChange: (next: SecretRow[]) => void;
 }) {
+  const t = useT();
   const { rows } = props;
   return (
     <div className="mt-3">
@@ -4540,7 +4726,7 @@ function SecretRowsEditor(props: {
           onClick={() => props.onChange([...rows, { key: "", value: "" }])}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
         >
-          + {props.label.replace(/s$/, "")}
+          + {props.addLabel}
         </button>
       </div>
       {rows.length === 0 && (
@@ -4567,7 +4753,7 @@ function SecretRowsEditor(props: {
             }}
             placeholder={
               r.value === SECRET_PLACEHOLDER
-                ? "leave blank to keep stored value"
+                ? t("settings.secretRows.keepStoredValue")
                 : props.valuePlaceholder
             }
             type="password"
@@ -4576,7 +4762,7 @@ function SecretRowsEditor(props: {
           <button
             onClick={() => props.onChange(rows.filter((_, j) => j !== i))}
             className="rounded border border-neutral-700 px-2 text-[11px] text-neutral-400 hover:text-red-300 light:hover:text-red-700"
-            title={`Remove ${props.label.toLowerCase()}`}
+            title={t("settings.secretRows.removeTitle", { label: props.label.toLowerCase() })}
           >
             ×
           </button>
@@ -4584,7 +4770,7 @@ function SecretRowsEditor(props: {
       ))}
       {rows.some((r) => r.value === SECRET_PLACEHOLDER) && (
         <p className="mt-1 text-[10px] italic text-neutral-500">
-          Values with the redaction sentinel keep their stored value when you save.
+          {t("settings.secretRows.sentinelHint")}
         </p>
       )}
     </div>
@@ -4604,6 +4790,7 @@ const MIN_PASSWORD_LENGTH = 8;
  * changes should be managed by LDAP.
  */
 function GeneralTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const version = useUiConfigStore((s) => s.version);
   const appName = useUiConfigStore((s) => s.appName);
   const loaded = useUiConfigStore((s) => s.loaded);
@@ -4617,36 +4804,40 @@ function GeneralTab({ onError }: { onError: (msg: string | undefined) => void })
       <header className="space-y-1">
         <h2 className="text-base font-semibold text-neutral-100">{appName}</h2>
         <p className="text-xs text-neutral-500">
-          Browser interface for the{" "}
+          {t("settings.general.aboutPrefix")}
           <a
             href="https://github.com/badlogic/pi-mono"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-400 underline hover:text-blue-300 light:text-blue-700 light:hover:text-blue-900"
           >
-            pi coding agent
+            {t("settings.general.agentLinkLabel")}
           </a>
-          .
+          {t("settings.general.aboutSuffix")}
         </p>
       </header>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Version</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          {t("settings.general.versionTitle")}
+        </h3>
         <p className="font-mono text-sm">
           {loaded ? (
             version.length > 0 ? (
               version
             ) : (
-              <span className="text-neutral-500">unknown</span>
+              <span className="text-neutral-500">{t("common.unknown")}</span>
             )
           ) : (
-            <span className="text-neutral-500">loading…</span>
+            <span className="text-neutral-500">{t("common.loading")}</span>
           )}
         </p>
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Links</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          {t("settings.general.linksTitle")}
+        </h3>
         <ul className="space-y-1 text-xs">
           <li>
             <a
@@ -4665,7 +4856,7 @@ function GeneralTab({ onError }: { onError: (msg: string | undefined) => void })
               rel="noopener noreferrer"
               className="text-blue-400 underline hover:text-blue-300 light:text-blue-700 light:hover:text-blue-900"
             >
-              Changelog
+              {t("settings.general.changelog")}
             </a>
           </li>
           <li>
@@ -4675,7 +4866,7 @@ function GeneralTab({ onError }: { onError: (msg: string | undefined) => void })
               rel="noopener noreferrer"
               className="text-blue-400 underline hover:text-blue-300 light:text-blue-700 light:hover:text-blue-900"
             >
-              Security
+              {t("settings.general.security")}
             </a>
           </li>
         </ul>
@@ -4689,6 +4880,7 @@ function GeneralTab({ onError }: { onError: (msg: string | undefined) => void })
 }
 
 function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const captureContent = useUiConfigStore((s) => s.telemetryCaptureContent);
   const setTelemetryCaptureContent = useUiConfigStore((s) => s.setTelemetryCaptureContent);
   const [saving, setSaving] = useState(false);
@@ -4732,12 +4924,9 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
     <section className="space-y-3 border-t border-neutral-800 pt-5">
       <div className="space-y-1">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-          Telemetry content capture
+          {t("settings.telemetry.title")}
         </h3>
-        <p className="max-w-3xl text-xs text-neutral-500">
-          Controls OTEL_CAPTURE_CONTENT at runtime. When enabled, full user and assistant message
-          content plus tool inputs/results may be exported to OpenTelemetry.
-        </p>
+        <p className="max-w-3xl text-xs text-neutral-500">{t("settings.telemetry.description")}</p>
       </div>
       <label className="flex max-w-3xl items-start gap-3 rounded-md border border-red-900/50 bg-red-950/20 p-3">
         <input
@@ -4749,12 +4938,9 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
         />
         <span className="space-y-1">
           <span className="block text-sm font-medium text-neutral-100">
-            Include message and tool content in telemetry
+            {t("settings.telemetry.includeContent")}
           </span>
-          <span className="block text-xs text-red-300/90">
-            Enable only with an approved data-retention policy. Captured content can include source
-            code, credentials, personal data, attachment text, and MCP/tool responses.
-          </span>
+          <span className="block text-xs text-red-300/90">{t("settings.telemetry.warning")}</span>
         </span>
       </label>
       <div className="flex items-center gap-2 text-xs">
@@ -4765,10 +4951,10 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
               : "bg-neutral-800 text-neutral-400 light:bg-neutral-200 light:text-neutral-700"
           }`}
         >
-          {captureContent ? "On" : "Off"}
+          {captureContent ? t("settings.telemetry.on") : t("settings.telemetry.off")}
         </span>
-        {saving && <span className="text-neutral-500">saving…</span>}
-        {savedFlash && <span className="text-emerald-400">Saved.</span>}
+        {saving && <span className="text-neutral-500">{t("common.saving")}</span>}
+        {savedFlash && <span className="text-emerald-400">{t("common.saved")}</span>}
       </div>
     </section>
   );
@@ -4784,6 +4970,7 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
  * re-renders.
  */
 function ChangePasswordSection() {
+  const t = useT();
   const changePassword = useAuthStore((s) => s.changePassword);
   const pending = useAuthStore((s) => s.changePasswordPending);
   const remoteError = useAuthStore((s) => s.changePasswordError);
@@ -4803,8 +4990,8 @@ function ChangePasswordSection() {
       setNext("");
       setConfirm("");
       setSavedFlash(true);
-      const t = window.setTimeout(() => setSavedFlash(false), 2500);
-      return () => window.clearTimeout(t);
+      const timer = window.setTimeout(() => setSavedFlash(false), 2500);
+      return () => window.clearTimeout(timer);
     }
     wasPendingRef.current = pending;
     return undefined;
@@ -4815,15 +5002,15 @@ function ChangePasswordSection() {
     setLocalError(undefined);
     setSavedFlash(false);
     if (next.length < MIN_PASSWORD_LENGTH) {
-      setLocalError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      setLocalError(t("settings.changePassword.tooShort", { count: MIN_PASSWORD_LENGTH }));
       return;
     }
     if (next !== confirm) {
-      setLocalError("New password and confirmation do not match.");
+      setLocalError(t("settings.changePassword.mismatch"));
       return;
     }
     if (next === current) {
-      setLocalError("New password must differ from the current one.");
+      setLocalError(t("settings.changePassword.unchanged"));
       return;
     }
     void changePassword(current, next);
@@ -4834,14 +5021,12 @@ function ChangePasswordSection() {
   return (
     <section className="space-y-2 border-t border-neutral-800 pt-5">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-        Change password
+        {t("settings.changePassword.title")}
       </h3>
-      <p className="text-xs text-neutral-500">
-        Updates the scrypt hash on disk; existing browser sessions stay signed in.
-      </p>
+      <p className="text-xs text-neutral-500">{t("settings.changePassword.description")}</p>
       <form onSubmit={onSubmit} className="space-y-2">
         <label className="block space-y-1">
-          <span className="text-xs text-neutral-400">Current password</span>
+          <span className="text-xs text-neutral-400">{t("settings.changePassword.current")}</span>
           <input
             type="password"
             value={current}
@@ -4851,7 +5036,9 @@ function ChangePasswordSection() {
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-xs text-neutral-400">New password</span>
+          <span className="text-xs text-neutral-400">
+            {t("settings.changePassword.newPassword")}
+          </span>
           <input
             type="password"
             value={next}
@@ -4862,7 +5049,9 @@ function ChangePasswordSection() {
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-xs text-neutral-400">Confirm new password</span>
+          <span className="text-xs text-neutral-400">
+            {t("settings.changePassword.confirmPassword")}
+          </span>
           <input
             type="password"
             value={confirm}
@@ -4879,7 +5068,7 @@ function ChangePasswordSection() {
         )}
         {savedFlash && (
           <p role="status" className="text-xs text-emerald-400 light:text-emerald-700">
-            Password updated.
+            {t("settings.changePassword.updated")}
           </p>
         )}
         <button
@@ -4887,7 +5076,7 @@ function ChangePasswordSection() {
           disabled={pending || current.length === 0 || next.length === 0}
           className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending ? "Saving…" : "Update password"}
+          {pending ? t("common.saving") : t("settings.changePassword.submit")}
         </button>
       </form>
     </section>
@@ -4898,14 +5087,14 @@ function friendlyChangePasswordError(code: string | undefined): string | undefin
   if (code === undefined) return undefined;
   switch (code) {
     case "invalid_password":
-      return "Current password is incorrect.";
+      return translate("settings.changePassword.errorInvalid");
     case "password_unchanged":
-      return "New password must differ from the current one.";
+      return translate("settings.changePassword.unchanged");
     case "ui_password_not_configured":
-      return "Password auth is not configured on this server.";
+      return translate("settings.changePassword.errorNotConfigured");
     case "auth_required":
-      return "Session expired — sign in again.";
+      return translate("settings.changePassword.errorAuthRequired");
     default:
-      return `Could not change password: ${code}`;
+      return translate("settings.changePassword.errorUnknown", { code });
   }
 }

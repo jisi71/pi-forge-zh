@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useFileStore, type OpenFile } from "../store/file-store";
 import { useActiveProject } from "../store/project-store";
+import { useT } from "../i18n";
 import { AlertTriangle, Save, WrapText, X, XSquare } from "lucide-react";
 import type { DiffLine } from "../lib/diff-parser";
 
@@ -74,6 +75,7 @@ const CodeMirrorEditor = lazy(() =>
  * `updateDraft`.
  */
 export function EditorPanel() {
+  const t = useT();
   const project = useActiveProject();
   const openFiles = useFileStore((s) => s.openFiles);
   const activePath = useFileStore((s) => s.activePath);
@@ -115,7 +117,7 @@ export function EditorPanel() {
       />
       {active === undefined ? (
         <div className="flex flex-1 items-center justify-center text-xs italic text-neutral-500">
-          No file open. Click a file in the tree to start editing.
+          {t("files.editor.empty")}
         </div>
       ) : (
         <>
@@ -130,7 +132,7 @@ export function EditorPanel() {
           )}
           {active.binary ? (
             <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-neutral-500">
-              {active.loadingError ?? "Binary file."}
+              {active.loadingError ?? t("files.editor.binary")}
             </div>
           ) : (
             <Suspense fallback={<EditorLoading />}>
@@ -165,9 +167,10 @@ export function EditorPanel() {
 }
 
 function EditorLoading() {
+  const t = useT();
   return (
     <div className="flex flex-1 items-center justify-center text-xs italic text-neutral-500">
-      Loading editor…
+      {t("files.editor.loading")}
     </div>
   );
 }
@@ -187,18 +190,14 @@ function Tabs({
   onClose: (path: string) => void;
   onCloseAll: () => void;
 }) {
+  const t = useT();
   if (files.length === 0) return null;
   const dirtyCount = files.filter((f) => f.dirty).length;
   const handleCloseAll = (): void => {
-    if (
-      dirtyCount > 0 &&
-      !window.confirm(
-        `Close ${files.length} tab${files.length === 1 ? "" : "s"}? ${dirtyCount} ha${
-          dirtyCount === 1 ? "s" : "ve"
-        } unsaved changes that will be lost.`,
-      )
-    ) {
-      return;
+    if (dirtyCount > 0) {
+      const question = t.plural("files.editor.closeAllConfirm", files.length);
+      const warning = t.plural("files.editor.closeAllWarning", dirtyCount);
+      if (!window.confirm(`${question} ${warning}`)) return;
     }
     onCloseAll();
   };
@@ -210,7 +209,7 @@ function Tabs({
       <button
         onClick={handleCloseAll}
         className="flex shrink-0 items-center justify-center border-r border-neutral-800 px-2 py-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-        title={`Close all ${files.length} tab${files.length === 1 ? "" : "s"}`}
+        title={t.plural("files.editor.closeAllTitle", files.length)}
       >
         <XSquare size={14} />
       </button>
@@ -235,9 +234,7 @@ function Tabs({
               key={f.tabId}
               className={`group flex items-center gap-1 border-r border-neutral-800 px-3 py-1.5 text-xs ${baseClass} ${conflictClass}`}
               title={
-                extChanged
-                  ? `${f.path}\n\nExternal change while you have unsaved edits — open the tab to review.`
-                  : f.path
+                extChanged ? t("files.editor.externalChangeTabTitle", { path: f.path }) : f.path
               }
             >
               <button onClick={() => onActivate(f.path)} className="truncate">
@@ -252,8 +249,8 @@ function Tabs({
                   // label so screen readers announce the unsaved state.
                   <span
                     className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-amber-400 align-middle"
-                    aria-label="Unsaved changes"
-                    title="Unsaved changes"
+                    aria-label={t("files.editor.unsaved")}
+                    title={t("files.editor.unsaved")}
                   />
                 ) : null}
                 {name}
@@ -261,7 +258,7 @@ function Tabs({
               <button
                 onClick={() => onClose(f.path)}
                 className="rounded p-1 text-neutral-600 hover:bg-neutral-800 hover:text-neutral-200"
-                title="Close (any unsaved changes are lost)"
+                title={t("files.editor.closeTabTitle")}
               >
                 <X size={16} />
               </button>
@@ -282,10 +279,11 @@ function ExternalChangeBanner({
   onReload: () => void;
   onDiscard: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center justify-between gap-3 border-b border-amber-700/40 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800">
       <span>
-        File changed externally — local edits in this tab are stale. Reload from disk?
+        {t("files.editor.externalChange")}
         <span className="ml-2 font-mono text-[10px] text-amber-400/70 light:text-amber-700/80">
           {path}
         </span>
@@ -295,13 +293,13 @@ function ExternalChangeBanner({
           onClick={onReload}
           className="rounded border border-amber-700/50 px-2 py-0.5 hover:bg-amber-900/30 light:border-amber-400 light:hover:bg-amber-100"
         >
-          Reload
+          {t("common.reload")}
         </button>
         <button
           onClick={onDiscard}
           className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
         >
-          Keep mine
+          {t("files.editor.keepMine")}
         </button>
       </div>
     </div>
@@ -319,6 +317,7 @@ function StatusBar({
   onToggleWrap: () => void;
   onSave: () => void;
 }) {
+  const t = useT();
   const dirty = file.dirty;
   const saving = file.saving;
   const savedAt = file.savedAt;
@@ -329,19 +328,19 @@ function StatusBar({
   // because the user needs to see the failure before deciding to keep
   // editing or retry. Cleared on the next successful save.
   if (saveError !== undefined) {
-    label = `Save failed (${saveError}) — Cmd/Ctrl+S or Save to retry`;
+    label = t("files.editor.saveFailed", { error: saveError });
     className = "text-rose-400 light:text-rose-700";
   } else if (saving) {
-    label = "Saving…";
+    label = t("common.saving");
   } else if (dirty) {
-    label = "Unsaved changes";
+    label = t("files.editor.unsaved");
     className = "text-amber-400 light:text-amber-700";
   } else if (savedAt !== undefined) {
-    const t = new Date(savedAt);
-    label = `Saved ${t.toLocaleTimeString()}`;
+    const savedDate = new Date(savedAt);
+    label = t("files.editor.savedAt", { time: savedDate.toLocaleTimeString() });
     className = "text-emerald-500 light:text-emerald-700";
   } else {
-    label = "Up to date";
+    label = t("files.editor.upToDate");
   }
   // Save button is only meaningful when there's something to save
   // (dirty buffer) or something to retry (last save errored). Stays
@@ -356,14 +355,10 @@ function StatusBar({
           className={`flex items-center gap-1 rounded px-1 py-0.5 text-[10px] hover:bg-neutral-800 ${
             wrap ? "text-neutral-300" : "text-neutral-500"
           }`}
-          title={
-            wrap
-              ? "Wrap on (click to switch to horizontal scroll, persisted per file extension)"
-              : "Wrap off (click to enable wrap, persisted per file extension)"
-          }
+          title={wrap ? t("files.editor.wrapOnTitle") : t("files.editor.wrapOffTitle")}
         >
           <WrapText size={11} />
-          {wrap ? "wrap" : "no wrap"}
+          {wrap ? t("files.editor.wrapOn") : t("files.editor.wrapOff")}
         </button>
       </div>
       <div className="flex items-center gap-2">
@@ -372,10 +367,10 @@ function StatusBar({
           onClick={onSave}
           disabled={!canSave}
           className="flex items-center gap-1 rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-200 hover:border-neutral-500 disabled:cursor-not-allowed disabled:border-neutral-800 disabled:text-neutral-600"
-          title="Save (Cmd/Ctrl+S)"
+          title={t("files.editor.saveTitle")}
         >
           <Save size={11} />
-          Save
+          {t("common.save")}
         </button>
       </div>
     </div>

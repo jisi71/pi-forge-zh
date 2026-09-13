@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { authColorStyle } from "../lib/auth-colors";
 import { appUrl } from "../lib/base-path";
+import { t, useT } from "../i18n";
 import { useAuthStore } from "../store/auth-store";
 import { useUiConfigStore } from "../store/ui-config-store";
 
@@ -18,6 +19,7 @@ const MIN_PASSWORD_LENGTH = 8;
  * the env value entirely.
  */
 export function ChangePasswordScreen() {
+  const t = useT();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -36,15 +38,15 @@ export function ChangePasswordScreen() {
     e.preventDefault();
     setLocalError(undefined);
     if (next.length < MIN_PASSWORD_LENGTH) {
-      setLocalError(`new password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+      setLocalError(t("auth.changePassword.errorTooShort", { min: MIN_PASSWORD_LENGTH }));
       return;
     }
     if (next !== confirm) {
-      setLocalError("new password and confirmation do not match");
+      setLocalError(t("auth.changePassword.errorMismatch"));
       return;
     }
     if (next === current) {
-      setLocalError("new password must differ from the current one");
+      setLocalError(t("auth.changePassword.errorSameAsCurrent"));
       return;
     }
     void changePassword(current, next);
@@ -69,15 +71,18 @@ export function ChangePasswordScreen() {
               className="max-h-6 max-w-24 object-contain"
               aria-hidden="true"
             />
-            <h1 className="text-xl font-semibold tracking-tight">Set a new password</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+              {t("auth.changePassword.title")}
+            </h1>
           </div>
           <p className="text-sm text-[var(--auth-muted-text)]">
-            You signed in with the deployment-supplied initial password. Pick a new one before
-            continuing — it will be stored as a hash on the {appName} data volume.
+            {t("auth.changePassword.subtitle", { appName })}
           </p>
         </header>
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--auth-text)]">Current password</span>
+          <span className="text-sm font-medium text-[var(--auth-text)]">
+            {t("auth.changePassword.currentLabel")}
+          </span>
           <input
             type="password"
             value={current}
@@ -88,7 +93,9 @@ export function ChangePasswordScreen() {
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--auth-text)]">New password</span>
+          <span className="text-sm font-medium text-[var(--auth-text)]">
+            {t("auth.changePassword.newLabel")}
+          </span>
           <input
             type="password"
             value={next}
@@ -99,7 +106,9 @@ export function ChangePasswordScreen() {
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--auth-text)]">Confirm new password</span>
+          <span className="text-sm font-medium text-[var(--auth-text)]">
+            {t("auth.changePassword.confirmLabel")}
+          </span>
           <input
             type="password"
             value={confirm}
@@ -119,14 +128,14 @@ export function ChangePasswordScreen() {
           disabled={pending || current.length === 0 || next.length === 0}
           className="w-full rounded-md bg-[var(--auth-button-bg)] px-3 py-2 text-sm font-medium text-[var(--auth-button-text)] transition hover:bg-[var(--auth-button-hover-bg)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending ? "Saving…" : "Set new password"}
+          {pending ? t("common.saving") : t("auth.changePassword.submit")}
         </button>
         <button
           type="button"
           onClick={logout}
           className="w-full rounded-md border border-[var(--auth-border)] px-3 py-2 text-xs text-[var(--auth-muted-text)] hover:border-[var(--auth-muted-text)] hover:text-[var(--auth-text)]"
         >
-          Sign out
+          {t("common.signOut")}
         </button>
       </form>
     </main>
@@ -137,14 +146,14 @@ function friendlyRemote(code: string | undefined): string | undefined {
   if (code === undefined) return undefined;
   switch (code) {
     case "invalid_password":
-      return "Current password is incorrect.";
+      return t("auth.changePassword.remoteIncorrectCurrent");
     case "password_unchanged":
-      return "New password must differ from the current one.";
+      return t("auth.changePassword.remotePasswordUnchanged");
     case "ui_password_not_configured":
-      return "Password auth is not configured on this server.";
+      return t("auth.changePassword.remoteNotConfigured");
     case "auth_required":
-      return "Session expired — sign in again.";
+      return t("auth.changePassword.remoteSessionExpired");
     default:
-      return `Could not change password: ${code}`;
+      return t("auth.changePassword.remoteFailed", { code });
   }
 }

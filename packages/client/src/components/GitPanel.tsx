@@ -23,6 +23,7 @@ import {
 } from "../lib/api-client";
 import { useActiveProject } from "../store/project-store";
 import { useGitStatus } from "../hooks/useGitStatus";
+import { t, useT } from "../i18n";
 import { DiffBlock } from "./DiffBlock";
 import { ConfirmDialog, Modal, PromptDialog } from "./Modal";
 import { laneColor, layoutCommits, type CommitLayout } from "../lib/git-graph";
@@ -33,7 +34,7 @@ function gitTargetLabel(remote: string | undefined, branch?: string): string {
   if (remote !== undefined && branch !== undefined) return `${remote}/${branch}`;
   if (remote !== undefined) return remote;
   if (branch !== undefined) return `origin/${branch}`;
-  return "the configured upstream";
+  return t("git.target.configuredUpstream");
 }
 
 function meaningfulGitOutputLine(output: string): string | undefined {
@@ -48,9 +49,9 @@ function describeFetchSuccess(output: string, remote: string | undefined): strin
   const target = gitTargetLabel(remote);
   const detail = meaningfulGitOutputLine(output);
   if (detail === undefined) {
-    return `Fetch complete from ${target}. No remote updates were reported.`;
+    return t("git.sync.fetchSuccessNoDetail", { target });
   }
-  return `Fetch complete from ${target}. Latest update: ${detail}`;
+  return t("git.sync.fetchSuccess", { target, detail });
 }
 
 function describePullSuccess(
@@ -60,20 +61,20 @@ function describePullSuccess(
 ): string {
   const target = gitTargetLabel(remote, branch);
   if (/already up[- ]to[- ]date\.?/i.test(output)) {
-    return `Already up to date. Your local branch matches ${target}.`;
+    return t("git.sync.pullUpToDate", { target });
   }
   const detail = meaningfulGitOutputLine(output);
   if (detail === undefined) {
-    return `Pull complete from ${target}. Refreshing the working tree status now.`;
+    return t("git.sync.pullSuccessNoDetail", { target });
   }
-  return `Pull complete from ${target}. Latest update: ${detail}`;
+  return t("git.sync.pullSuccess", { target, detail });
 }
 
 function describeSyncFailure(operation: SyncOperation, message: string): string {
   if (operation === "fetch") {
-    return `Fetch failed: ${message}. Check the remote name, network connection, and Git credentials.`;
+    return t("git.sync.fetchFailed", { message });
   }
-  return `Pull failed: ${message}. If there are conflicts, resolve them in the terminal, then refresh git status.`;
+  return t("git.sync.pullFailed", { message });
 }
 
 /**
@@ -94,6 +95,7 @@ function describeSyncFailure(operation: SyncOperation, message: string): string 
  * the active session is streaming).
  */
 export function GitPanel() {
+  const t = useT();
   const project = useActiveProject();
   const projectId = project?.id;
   const [worktrees, setWorktrees] = useState<GitWorktree[] | undefined>(undefined);
@@ -392,7 +394,7 @@ export function GitPanel() {
   if (project === undefined) {
     return (
       <div className="flex h-full items-center justify-center px-4 text-center text-xs italic text-neutral-500">
-        Pick a project to see its git status.
+        {t("git.pickProject")}
       </div>
     );
   }
@@ -415,20 +417,24 @@ export function GitPanel() {
     };
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-xs text-neutral-500">
-        <p className="italic">{project.name} isn't a git repository.</p>
+        <p className="italic">{t("git.init.notARepo", { name: project.name })}</p>
         <button
           onClick={() => void handleInit()}
           disabled={busy}
           className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-          title="Run `git init -b main` in the project root"
+          title={t("git.init.title")}
         >
-          {busy ? "Initializing…" : "Initialize git repo"}
+          {busy ? t("git.init.initializing") : t("git.init.action")}
         </button>
         <p className="text-[10px] text-neutral-600">
-          Default branch will be <code className="font-mono text-neutral-400">main</code>.
+          {t("git.init.defaultBranchPrefix")}
+          <code className="font-mono text-neutral-400">main</code>
+          {t("git.init.defaultBranchSuffix")}
         </p>
         {opError !== undefined && (
-          <p className="text-[10px] text-red-400 light:text-red-700">git init failed: {opError}</p>
+          <p className="text-[10px] text-red-400 light:text-red-700">
+            {t("git.init.failed", { error: opError })}
+          </p>
         )}
       </div>
     );
@@ -493,7 +499,11 @@ export function GitPanel() {
     setOpResult(undefined);
     try {
       await api.gitRevert(project.id, paths, selectedWorktreePath);
-      setOpResult(paths.length === 1 ? `Reverted ${paths[0]}` : `Reverted ${paths.length} files`);
+      setOpResult(
+        paths.length === 1
+          ? t("git.revert.doneOne", { path: paths[0] ?? "" })
+          : t.plural("git.revert.doneMany", paths.length),
+      );
       await refresh();
     } catch (err) {
       setOpError(err instanceof ApiError ? err.message : (err as Error).message);
@@ -543,7 +553,7 @@ export function GitPanel() {
         // the user sees "binary_or_no_hunks" / "git_apply_failed" /
         // etc. The panel's existing banner is the right surface for
         // these — they're file-level diagnostics, not toasts.
-        setOpError(`Hunk apply failed: ${r.error ?? "unknown_error"}`);
+        setOpError(t("git.hunk.applyFailed", { error: r.error ?? "unknown_error" }));
         return;
       }
       // Refetch BOTH sides of the diff for this file so the inline
@@ -587,7 +597,7 @@ export function GitPanel() {
     try {
       const { hash } = await api.gitCommit(project.id, msg, selectedWorktreePath);
       setCommitMessage("");
-      setOpResult(`Committed ${hash.slice(0, 7)}`);
+      setOpResult(t("git.commit.done", { hash: hash.slice(0, 7) }));
       await refresh();
       // Refresh log if the section is open so the new commit shows up.
       if (showLog) {
@@ -633,7 +643,7 @@ export function GitPanel() {
     setBusy(true);
     setBusyOperation("fetch");
     setOpError(undefined);
-    setOpResult(`Fetching from ${gitTargetLabel(pushRemote)}…`);
+    setOpResult(t("git.sync.fetching", { target: gitTargetLabel(pushRemote) }));
     try {
       const opts: { remote?: string; worktreePath?: string } = {};
       if (pushRemote !== undefined) opts.remote = pushRemote;
@@ -656,7 +666,7 @@ export function GitPanel() {
     setOpError(undefined);
     const overrideName = pushBranchOverride.trim();
     const branch = overrideName.length > 0 ? overrideName : undefined;
-    setOpResult(`Pulling from ${gitTargetLabel(pushRemote, branch)}…`);
+    setOpResult(t("git.sync.pulling", { target: gitTargetLabel(pushRemote, branch) }));
     try {
       const opts: { remote?: string; branch?: string; worktreePath?: string } = {};
       if (pushRemote !== undefined) opts.remote = pushRemote;
@@ -695,7 +705,9 @@ export function GitPanel() {
       if (selectedWorktreePath !== undefined) opts.worktreePath = selectedWorktreePath;
       const { output } = await api.gitPush(project.id, opts);
       setOpResult(
-        output.trim().length > 0 ? (output.trim().split("\n").pop() ?? "Pushed") : "Pushed",
+        output.trim().length > 0
+          ? (output.trim().split("\n").pop() ?? t("git.push.pushed"))
+          : t("git.push.pushed"),
       );
       // Set-upstream is a one-shot: the remote ref is now tracked,
       // so future pushes don't need the flag. Auto-clear so the
@@ -729,7 +741,7 @@ export function GitPanel() {
             )}
           </div>
           <label className="mt-1 flex items-center gap-1.5 text-[10px] text-neutral-500">
-            <span className="shrink-0 uppercase tracking-wider">Worktree</span>
+            <span className="shrink-0 uppercase tracking-wider">{t("git.header.worktree")}</span>
             <select
               value={selectedWorktreePath ?? ""}
               onChange={(e) => setSelectedWorktreePath(e.target.value || undefined)}
@@ -737,14 +749,14 @@ export function GitPanel() {
               className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-950 px-1.5 py-0.5 text-[10px] text-neutral-200 outline-none hover:border-neutral-600 focus:border-neutral-500 disabled:cursor-not-allowed disabled:border-neutral-800 disabled:text-neutral-500"
               title={
                 selectedWorktreePath !== undefined
-                  ? `Viewing git info for ${selectedWorktreePath}`
-                  : "Loading git worktrees"
+                  ? t("git.header.worktreeTitle", { path: selectedWorktreePath })
+                  : t("git.header.loadingWorktrees")
               }
             >
               {worktrees === undefined ? (
-                <option value="">Loading…</option>
+                <option value="">{t("common.loading")}</option>
               ) : worktrees.length === 0 ? (
-                <option value="">No worktrees</option>
+                <option value="">{t("git.header.noWorktrees")}</option>
               ) : (
                 worktrees.map((w) => (
                   <option key={w.path} value={w.path}>
@@ -761,8 +773,8 @@ export function GitPanel() {
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
             title={
               diffViewType === "split"
-                ? "Switch git diffs to unified view"
-                : "Switch git diffs to side-by-side view"
+                ? t("git.header.switchToUnified")
+                : t("git.header.switchToSplit")
             }
           >
             {diffViewType === "split" ? <Rows2 size={13} /> : <Columns2 size={13} />}
@@ -770,7 +782,7 @@ export function GitPanel() {
           <button
             onClick={() => void refresh()}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Refresh"
+            title={t("common.refresh")}
           >
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} />
           </button>
@@ -789,20 +801,22 @@ export function GitPanel() {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {status === undefined && <p className="px-3 py-3 italic text-neutral-500">Loading…</p>}
+        {status === undefined && (
+          <p className="px-3 py-3 italic text-neutral-500">{t("common.loading")}</p>
+        )}
 
         {status?.files.length === 0 && (
-          <p className="px-3 py-3 italic text-neutral-500">Working tree clean.</p>
+          <p className="px-3 py-3 italic text-neutral-500">{t("git.status.clean")}</p>
         )}
 
         {stagedFiles.length > 0 && (
           <FileGroup
-            label="Staged"
+            label={t("git.group.staged")}
             files={stagedFiles}
-            actionLabel="Unstage all"
+            actionLabel={t("git.group.unstageAll")}
             onGroupAction={() => void unstage(stagedFiles.map((f) => f.path))}
             onFileAction={(f) => void unstage([f.path])}
-            fileActionLabel="Unstage"
+            fileActionLabel={t("git.group.unstage")}
             onRevert={(f) => void revert([f.path])}
             onClickFile={(f) => void toggleDiff(f, true)}
             openDiffs={openDiffs}
@@ -814,12 +828,12 @@ export function GitPanel() {
         )}
         {unstagedFiles.length > 0 && (
           <FileGroup
-            label="Unstaged"
+            label={t("git.group.unstaged")}
             files={unstagedFiles}
-            actionLabel="Stage all"
+            actionLabel={t("git.group.stageAll")}
             onGroupAction={() => void stage(unstagedFiles.map((f) => f.path))}
             onFileAction={(f) => void stage([f.path])}
-            fileActionLabel="Stage"
+            fileActionLabel={t("git.group.stage")}
             onRevert={(f) => void revert([f.path])}
             onClickFile={(f) => void toggleDiff(f, false)}
             openDiffs={openDiffs}
@@ -831,12 +845,12 @@ export function GitPanel() {
         )}
         {untrackedFiles.length > 0 && (
           <FileGroup
-            label="Untracked"
+            label={t("git.group.untracked")}
             files={untrackedFiles}
-            actionLabel="Stage all"
+            actionLabel={t("git.group.stageAll")}
             onGroupAction={() => void stage(untrackedFiles.map((f) => f.path))}
             onFileAction={(f) => void stage([f.path])}
-            fileActionLabel="Stage"
+            fileActionLabel={t("git.group.stage")}
             // Untracked files can't be reverted (git refuses; they
             // weren't in HEAD). Pass undefined so the row hides
             // the revert button — user should delete via the file
@@ -856,23 +870,25 @@ export function GitPanel() {
         {/* Commit section — disabled while nothing's staged. */}
         <div className="border-t border-neutral-800/60 px-3 py-3">
           <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-neutral-500">
-            <GitCommit size={10} /> Commit
+            <GitCommit size={10} /> {t("git.commit.heading")}
           </div>
           <textarea
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
-            placeholder="Commit message…"
+            placeholder={t("git.commit.placeholder")}
             rows={3}
             className="w-full resize-none rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-neutral-500"
           />
           <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="text-[10px] text-neutral-500">{stagedFiles.length} staged</span>
+            <span className="text-[10px] text-neutral-500">
+              {t("git.commit.stagedCount", { count: stagedFiles.length })}
+            </span>
             <button
               onClick={() => void commit()}
               disabled={busy || stagedFiles.length === 0 || commitMessage.trim().length === 0}
               className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Commit
+              {t("common.commit")}
             </button>
           </div>
         </div>
@@ -881,7 +897,7 @@ export function GitPanel() {
         <div className="border-t border-neutral-800/60 px-3 py-3">
           <div className="mb-1 flex items-center justify-between gap-1 text-[10px] uppercase tracking-wider text-neutral-500">
             <span className="flex items-center gap-1">
-              <Upload size={10} /> Push
+              <Upload size={10} /> {t("git.push.heading")}
             </span>
             <button
               onClick={() => {
@@ -906,13 +922,13 @@ export function GitPanel() {
               }}
               className="rounded px-1 py-0.5 text-[10px] normal-case text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200"
             >
-              {showPushOptions ? "Hide options" : "Options"}
+              {showPushOptions ? t("git.push.hideOptions") : t("common.options")}
             </button>
           </div>
           {showPushOptions && (
             <div className="mb-2 space-y-1.5 rounded border border-neutral-800 bg-neutral-900/40 p-2">
               <label className="flex items-center gap-2 text-[11px]">
-                <span className="w-16 shrink-0 text-neutral-400">Remote</span>
+                <span className="w-16 shrink-0 text-neutral-400">{t("common.remote")}</span>
                 {knownRemotes.length > 0 ? (
                   <select
                     value={pushRemote ?? ""}
@@ -921,7 +937,7 @@ export function GitPanel() {
                     }
                     className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-1 py-0.5 text-[11px] text-neutral-100 outline-none focus:border-neutral-500"
                   >
-                    <option value="">configured upstream</option>
+                    <option value="">{t("git.push.configuredUpstream")}</option>
                     {knownRemotes.map((r) => (
                       <option key={r} value={r}>
                         {r}
@@ -941,14 +957,14 @@ export function GitPanel() {
                 )}
               </label>
               <label className="flex items-center gap-2 text-[11px]">
-                <span className="w-16 shrink-0 text-neutral-400">Branch</span>
+                <span className="w-16 shrink-0 text-neutral-400">{t("common.branch")}</span>
                 {knownLocalBranches.length > 0 ? (
                   <select
                     value={pushBranchOverride}
                     onChange={(e) => setPushBranchOverride(e.target.value)}
                     className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-1 py-0.5 text-[11px] text-neutral-100 outline-none focus:border-neutral-500"
                   >
-                    <option value="">{status?.branch ?? "current branch"}</option>
+                    <option value="">{status?.branch ?? t("git.push.currentBranch")}</option>
                     {knownLocalBranches.map((b) => (
                       <option key={b} value={b}>
                         {b}
@@ -960,7 +976,7 @@ export function GitPanel() {
                     type="text"
                     value={pushBranchOverride}
                     onChange={(e) => setPushBranchOverride(e.target.value)}
-                    placeholder={status?.branch ?? "current"}
+                    placeholder={status?.branch ?? t("git.push.current")}
                     className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-1 py-0.5 text-[11px] text-neutral-100 outline-none focus:border-neutral-500"
                   />
                 )}
@@ -972,7 +988,7 @@ export function GitPanel() {
                   onChange={(e) => setPushSetUpstream(e.target.checked)}
                   className="h-3 w-3"
                 />
-                <span>Set upstream (first push of a new branch)</span>
+                <span>{t("git.push.setUpstream")}</span>
               </label>
             </div>
           )}
@@ -983,19 +999,19 @@ export function GitPanel() {
               className="flex-1 rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:border-neutral-500 disabled:opacity-50"
               title={
                 pushRemote !== undefined
-                  ? `Fetch remote-tracking updates from ${pushRemote}; the working tree is not changed.`
-                  : "Fetch remote-tracking updates from the configured upstream; the working tree is not changed."
+                  ? t("git.push.fetchTitleRemote", { remote: pushRemote })
+                  : t("git.push.fetchTitleUpstream")
               }
             >
-              {busyOperation === "fetch" ? "Fetching…" : "Fetch"}
+              {busyOperation === "fetch" ? t("git.push.fetching") : t("git.push.fetch")}
             </button>
             <button
               onClick={() => void handlePull()}
               disabled={busy}
               className="flex-1 rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:border-neutral-500 disabled:opacity-50"
-              title="Fetch and merge the selected upstream into this worktree. Conflicts are shown in the error banner; resolve them in the integrated terminal."
+              title={t("git.push.pullTitle")}
             >
-              {busyOperation === "pull" ? "Pulling…" : "Pull"}
+              {busyOperation === "pull" ? t("git.push.pulling") : t("git.push.pull")}
             </button>
             <button
               onClick={() => void handlePush()}
@@ -1003,13 +1019,15 @@ export function GitPanel() {
               className="flex-1 rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:border-neutral-500 disabled:opacity-50"
               title={
                 pushRemote === undefined && pushBranchOverride.trim().length === 0
-                  ? "git push (configured upstream)"
-                  : `git push ${pushRemote ?? "(upstream)"}${
-                      pushBranchOverride.trim().length > 0 ? ` ${pushBranchOverride.trim()}` : ""
-                    }`
+                  ? t("git.push.pushTitleUpstream")
+                  : t("git.push.pushTitleArgs", {
+                      remote: pushRemote ?? "(upstream)",
+                      branch:
+                        pushBranchOverride.trim().length > 0 ? ` ${pushBranchOverride.trim()}` : "",
+                    })
               }
             >
-              Push
+              {t("git.push.push")}
             </button>
           </div>
         </div>
@@ -1020,15 +1038,15 @@ export function GitPanel() {
             onClick={() => setShowLog((v) => !v)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-900"
           >
-            <span>Log</span>
+            <span>{t("git.log.heading")}</span>
             <span>{showLog ? "−" : "+"}</span>
           </button>
           {showLog && (
             <div className="px-3 pb-3 text-[11px]">
               {log === undefined ? (
-                <p className="italic text-neutral-500">Loading…</p>
+                <p className="italic text-neutral-500">{t("common.loading")}</p>
               ) : log.length === 0 ? (
-                <p className="italic text-neutral-500">No commits yet.</p>
+                <p className="italic text-neutral-500">{t("git.log.empty")}</p>
               ) : (
                 <LogGraph commits={log} />
               )}
@@ -1042,13 +1060,13 @@ export function GitPanel() {
             onClick={() => setShowBranches((v) => !v)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-900"
           >
-            <span>Branches</span>
+            <span>{t("git.branches.heading")}</span>
             <span>{showBranches ? "−" : "+"}</span>
           </button>
           {showBranches && (
             <div className="px-3 pb-3 text-[11px]">
               {branches === undefined ? (
-                <p className="italic text-neutral-500">Loading…</p>
+                <p className="italic text-neutral-500">{t("common.loading")}</p>
               ) : (
                 <>
                   <ul className="space-y-0.5">
@@ -1070,7 +1088,9 @@ export function GitPanel() {
                             {b.name}
                           </span>
                           {b.remote && (
-                            <span className="ml-1 text-[10px] text-neutral-600">remote</span>
+                            <span className="ml-1 text-[10px] text-neutral-600">
+                              {t("git.branches.remoteTag")}
+                            </span>
                           )}
                           {/* Per-row actions only show on hover. Current
                               local branch shows neither — checkout-self
@@ -1083,18 +1103,18 @@ export function GitPanel() {
                                 className="rounded px-1 py-0.5 text-[10px] text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100 disabled:opacity-40"
                                 title={
                                   b.remote
-                                    ? `Checkout (creates a tracking branch from ${b.name})`
-                                    : `Checkout ${b.name}`
+                                    ? t("git.branches.checkoutRemoteTitle", { branch: b.name })
+                                    : t("git.branches.checkoutTitle", { branch: b.name })
                                 }
                               >
-                                checkout
+                                {t("git.branches.checkout")}
                               </button>
                               {!b.remote && (
                                 <button
                                   onClick={() => setBranchDialog({ kind: "delete", name: b.name })}
                                   disabled={busy}
                                   className="rounded p-0.5 text-neutral-500 hover:bg-red-900/30 hover:text-red-300 disabled:opacity-40 light:hover:bg-red-100 light:hover:text-red-700"
-                                  title="Delete branch"
+                                  title={t("git.branches.deleteTitle")}
                                 >
                                   <Trash2 size={10} />
                                 </button>
@@ -1109,7 +1129,7 @@ export function GitPanel() {
                     onClick={() => setBranchDialog({ kind: "create" })}
                     className="mt-2 flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
                   >
-                    <Plus size={10} /> New branch
+                    <Plus size={10} /> {t("git.branches.new")}
                   </button>
                 </>
               )}
@@ -1125,17 +1145,17 @@ export function GitPanel() {
             onClick={() => setShowRemotes((v) => !v)}
             className="flex w-full items-center justify-between px-3 py-2 text-left text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-900"
           >
-            <span>Remotes</span>
+            <span>{t("git.remotes.heading")}</span>
             <span>{showRemotes ? "−" : "+"}</span>
           </button>
           {showRemotes && (
             <div className="px-3 pb-3 text-[11px]">
               {remotes === undefined ? (
-                <p className="italic text-neutral-500">Loading…</p>
+                <p className="italic text-neutral-500">{t("common.loading")}</p>
               ) : (
                 <>
                   {remotes.length === 0 ? (
-                    <p className="italic text-neutral-500">No remotes configured.</p>
+                    <p className="italic text-neutral-500">{t("git.remotes.empty")}</p>
                   ) : (
                     <ul className="space-y-1">
                       {remotes.map((r) => {
@@ -1153,22 +1173,22 @@ export function GitPanel() {
                               <span className="font-mono text-neutral-200">{r.name}</span>
                               {diverged && (
                                 <span className="rounded bg-amber-900/30 px-1 py-0.5 text-[9px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800">
-                                  fetch ≠ push
+                                  {t("git.remotes.diverged")}
                                 </span>
                               )}
                               {r.insecureTls && (
                                 <span
                                   className="rounded bg-amber-900/40 px-1 py-0.5 text-[9px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800"
-                                  title="TLS certificate verification disabled for this remote URL in local git config"
+                                  title={t("git.remotes.ignoreTlsTitle")}
                                 >
-                                  ignore tls
+                                  {t("git.remotes.ignoreTls")}
                                 </span>
                               )}
                               <button
                                 onClick={() => setRemoveRemoteName(r.name)}
                                 disabled={busy}
                                 className="ml-auto hidden rounded p-0.5 text-neutral-500 hover:bg-red-900/30 hover:text-red-300 disabled:opacity-40 group-hover:inline-flex light:hover:bg-red-100 light:hover:text-red-700"
-                                title={`Remove remote "${r.name}"`}
+                                title={t("git.remotes.removeTitle", { name: r.name })}
                               >
                                 <Trash2 size={10} />
                               </button>
@@ -1182,9 +1202,9 @@ export function GitPanel() {
                             {diverged && (
                               <span
                                 className="break-all font-mono text-[10px] text-neutral-500"
-                                title={`push → ${r.pushUrl}`}
+                                title={t("git.remotes.pushUrl", { url: r.pushUrl })}
                               >
-                                push → {r.pushUrl}
+                                {t("git.remotes.pushUrl", { url: r.pushUrl })}
                               </span>
                             )}
                             <label className="mt-0.5 flex items-start gap-1.5 text-[10px] text-neutral-500">
@@ -1197,9 +1217,7 @@ export function GitPanel() {
                                 disabled={busy}
                                 className="mt-0.5 h-3 w-3"
                               />
-                              <span>
-                                Ignore SSL/TLS verification for this remote (local repo config only)
-                              </span>
+                              <span>{t("git.remotes.ignoreTlsLabel")}</span>
                             </label>
                           </li>
                         );
@@ -1215,7 +1233,7 @@ export function GitPanel() {
                     }}
                     className="mt-2 flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
                   >
-                    <Plus size={10} /> Add remote
+                    <Plus size={10} /> {t("git.remotes.add")}
                   </button>
                 </>
               )}
@@ -1227,25 +1245,29 @@ export function GitPanel() {
         open={branchDialog?.kind === "create"}
         onClose={() => setBranchDialog(undefined)}
         onSubmit={(name) => void handleCreateBranch(name)}
-        title="New branch"
-        label="Branch name"
+        title={t("git.branches.new")}
+        label={t("git.branches.nameLabel")}
         placeholder="feature/my-change"
-        primaryLabel="Create + checkout"
+        primaryLabel={t("git.branches.createCheckout")}
       />
       <ConfirmDialog
         open={branchDialog?.kind === "delete"}
         onClose={() => setBranchDialog(undefined)}
         onConfirm={() => void handleDeleteBranch(false)}
-        title="Delete branch"
+        title={t("git.branches.deleteTitle")}
         message={
           branchDialog?.kind === "delete"
-            ? `Delete branch "${branchDialog.name}"? Refused if not merged into HEAD; force-delete from the terminal if you really mean it.`
+            ? t("git.branches.deleteConfirm", { name: branchDialog.name })
             : ""
         }
-        primaryLabel="Delete"
+        primaryLabel={t("common.delete")}
         tone="danger"
       />
-      <Modal open={showAddRemote} onClose={() => setShowAddRemote(false)} title="Add remote">
+      <Modal
+        open={showAddRemote}
+        onClose={() => setShowAddRemote(false)}
+        title={t("git.remotes.add")}
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1254,7 +1276,7 @@ export function GitPanel() {
           className="flex flex-col gap-3 px-4 py-3"
         >
           <label className="block space-y-1.5">
-            <span className="text-xs text-neutral-300">Name</span>
+            <span className="text-xs text-neutral-300">{t("common.name")}</span>
             <input
               type="text"
               value={newRemoteName}
@@ -1265,7 +1287,7 @@ export function GitPanel() {
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs text-neutral-300">URL</span>
+            <span className="text-xs text-neutral-300">{t("common.url")}</span>
             <input
               type="text"
               value={newRemoteUrl}
@@ -1283,12 +1305,11 @@ export function GitPanel() {
             />
             <span>
               <span className="text-amber-200 light:text-amber-800">
-                Ignore SSL/TLS verification for this remote
+                {t("git.remotes.ignoreTlsLabelShort")}
               </span>
               <br />
               <span className="text-[11px] text-amber-300/70 light:text-amber-700/80">
-                Persists only in this repository as URL-scoped git config. Use only for internal Git
-                hosts with a known self-signed/private-CA certificate.
+                {t("git.remotes.ignoreTlsHelp")}
               </span>
             </span>
           </label>
@@ -1298,14 +1319,14 @@ export function GitPanel() {
               onClick={() => setShowAddRemote(false)}
               className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={newRemoteName.trim().length === 0 || newRemoteUrl.trim().length === 0}
               className="rounded-md bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Add
+              {t("common.add")}
             </button>
           </footer>
         </form>
@@ -1314,13 +1335,13 @@ export function GitPanel() {
         open={removeRemoteName !== undefined}
         onClose={() => setRemoveRemoteName(undefined)}
         onConfirm={() => void handleRemoveRemote()}
-        title="Remove remote"
+        title={t("git.remotes.remove")}
         message={
           removeRemoteName !== undefined
-            ? `Remove remote "${removeRemoteName}"? The local repo loses its reference to this URL; existing commits aren't affected.`
+            ? t("git.remotes.removeConfirm", { name: removeRemoteName })
             : ""
         }
-        primaryLabel="Remove"
+        primaryLabel={t("common.remove")}
         tone="danger"
       />
     </div>
@@ -1357,6 +1378,7 @@ interface FileGroupProps {
 const REVERT_CONFIRM_TIMEOUT_MS = 3000;
 
 function FileGroup(props: FileGroupProps) {
+  const t = useT();
   // Click-twice-to-confirm state for the destructive Revert action.
   // First click on a file's revert button puts THAT file's path
   // into `pending`, swaps the icon for "Confirm?" copy, and sets
@@ -1426,7 +1448,7 @@ function FileGroup(props: FileGroupProps) {
               <div className="group flex items-center gap-2 px-3 py-1 hover:bg-neutral-900">
                 <span
                   className="inline-block w-5 shrink-0 text-center font-mono text-[10px] text-neutral-500"
-                  title={`porcelain code: ${f.code}`}
+                  title={t("git.status.porcelainTitle", { code: f.code })}
                 >
                   {kindBadge(f.kind)}
                 </span>
@@ -1454,12 +1476,12 @@ function FileGroup(props: FileGroupProps) {
                     }
                     title={
                       revertPending
-                        ? "Click again to discard local changes (this cannot be undone)"
-                        : "Revert: discard local changes for this file"
+                        ? t("git.status.revertConfirmTitle")
+                        : t("git.status.revertTitle")
                     }
                   >
                     <Undo2 size={10} />
-                    {revertPending ? "Confirm?" : "Revert"}
+                    {revertPending ? t("git.status.confirm") : t("git.status.revert")}
                   </button>
                 )}
                 <button
@@ -1469,26 +1491,20 @@ function FileGroup(props: FileGroupProps) {
                   // flex-row layout and let the icon wrap.
                   className="ml-3 hidden items-center gap-1 text-[10px] text-neutral-500 hover:text-neutral-200 group-hover:inline-flex"
                 >
-                  {props.fileActionLabel === "Stage" ? (
-                    <Plus size={10} />
-                  ) : props.fileActionLabel === "Unstage" ? (
-                    <Minus size={10} />
-                  ) : null}
+                  {props.staged ? <Minus size={10} /> : <Plus size={10} />}
                   {props.fileActionLabel}
                 </button>
               </div>
               {diffState !== undefined && (
                 <div className="border-t border-neutral-900 bg-neutral-950">
                   {diffState === "loading" ? (
-                    <p className="px-3 py-2 italic text-neutral-500">Loading…</p>
+                    <p className="px-3 py-2 italic text-neutral-500">{t("common.loading")}</p>
                   ) : diffState === "error" ? (
                     <p className="px-3 py-2 text-red-400 light:text-red-700">
-                      Failed to load diff.
+                      {t("git.status.diffFailed")}
                     </p>
                   ) : diffState.length === 0 ? (
-                    <p className="px-3 py-2 italic text-neutral-500">
-                      (no diff — file is binary or unchanged)
-                    </p>
+                    <p className="px-3 py-2 italic text-neutral-500">{t("git.status.diffEmpty")}</p>
                   ) : (
                     <DiffBlock
                       diff={diffState}
@@ -1498,7 +1514,9 @@ function FileGroup(props: FileGroupProps) {
                           ? (idx) => props.onHunkAction?.(f, idx)
                           : undefined
                       }
-                      hunkActionLabel={props.staged ? "Unstage hunk" : "Stage hunk"}
+                      hunkActionLabel={
+                        props.staged ? t("git.group.unstageHunk") : t("git.group.stageHunk")
+                      }
                       hunkActionDisabled={props.pendingHunkPath === f.path}
                     />
                   )}

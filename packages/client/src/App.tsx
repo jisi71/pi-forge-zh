@@ -35,8 +35,22 @@ import { ResizableDivider } from "./components/ResizableDivider";
 import { useGitStatus } from "./hooks/useGitStatus";
 import { appUrl } from "./lib/base-path";
 import { themeDef, useThemeStore } from "./lib/theme";
+import { useT, type TranslateKey } from "./i18n";
 
 type RightPaneTab = "files" | "search" | "changes" | "git" | "context" | "processes";
+
+/* Right-pane tab labels. Typed against the locale keys so a new tab id
+   fails `tsc` until both language files carry its label. The `changes`
+   key is labelled "Last turn" — the internal id stays `changes` for
+   backwards-compat with persisted localStorage. */
+const RIGHT_TAB_LABELS: Record<RightPaneTab, TranslateKey> = {
+  files: "common.files",
+  search: "common.search",
+  changes: "app.tabs.lastTurn",
+  git: "app.tabs.git",
+  processes: "common.processes",
+  context: "common.context",
+};
 
 /* Persisted pane widths. Stored in localStorage so the user-tuned
    layout survives reloads. Defaults err on the side of "the chat is the
@@ -99,6 +113,7 @@ export function clampProjectsWidth(width: number, maxWidth: number): number {
 }
 
 export function App() {
+  const t = useT();
   const ready = useAuthStore((s) => s.ready);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const mustChangePassword = useAuthStore((s) => s.mustChangePassword);
@@ -469,7 +484,7 @@ export function App() {
   if (!ready) {
     return (
       <main className="flex min-h-screen items-center justify-center text-sm text-neutral-400">
-        Loading…
+        {t("common.loading")}
       </main>
     );
   }
@@ -499,7 +514,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setDrawerOpen((v) => !v)}
-            aria-label={drawerOpen ? "Close project sidebar" : "Open project sidebar"}
+            aria-label={drawerOpen ? t("app.nav.closeSidebar") : t("app.nav.openSidebar")}
             aria-expanded={drawerOpen}
             className="-ml-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-neutral-300 hover:bg-neutral-800 md:hidden"
           >
@@ -534,10 +549,10 @@ export function App() {
                   ? "border-neutral-500 bg-neutral-800 text-neutral-100"
                   : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
               }`}
-              title="Toggle the chat pane"
+              title={t("app.panes.toggleChat")}
             >
               <MessageSquare size={13} />
-              Chat
+              {t("app.panes.chat")}
             </button>
             <button
               onClick={() => setEditorOpenPersisted(!editorOpen)}
@@ -546,10 +561,10 @@ export function App() {
                   ? "border-neutral-500 bg-neutral-800 text-neutral-100"
                   : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
               }`}
-              title="Toggle the editor pane (open tabs persist across reloads)"
+              title={t("app.panes.toggleEditor")}
             >
               <FileCode size={13} />
-              Editor
+              {t("app.panes.editor")}
             </button>
             <button
               onClick={() => setFilesOpenPersisted(!filesOpen)}
@@ -558,10 +573,10 @@ export function App() {
                   ? "border-neutral-500 bg-neutral-800 text-neutral-100"
                   : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
               }`}
-              title="Toggle the file browser tree"
+              title={t("app.panes.toggleFiles")}
             >
               <FolderTree size={13} />
-              Files
+              {t("common.files")}
             </button>
             {!minimal && (
               <button
@@ -571,10 +586,10 @@ export function App() {
                     ? "border-neutral-500 bg-neutral-800 text-neutral-100"
                     : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
                 }`}
-                title="Toggle the integrated terminal"
+                title={t("app.panes.toggleTerminal")}
               >
                 <TerminalIcon size={13} />
-                Terminal
+                {t("common.terminal")}
               </button>
             )}
           </div>
@@ -589,9 +604,9 @@ export function App() {
           {telemetryCaptureContent && (
             <span
               className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm shadow-red-950/40"
-              title="OTEL_CAPTURE_CONTENT is on: message and tool content may be exported in telemetry."
+              title={t("app.telemetry.badgeTitle")}
             >
-              OTEL content capture on
+              {t("app.telemetry.badge")}
             </span>
           )}
           {/* MCP status badge stays visible in minimal — operators
@@ -602,15 +617,15 @@ export function App() {
           <button
             onClick={() => setSettingsOpen(true)}
             className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
-            title="Settings (providers, agent defaults, MCP, skills)"
+            title={t("app.nav.settingsTooltip")}
           >
-            Settings
+            {t("common.settings")}
           </button>
           <button
             onClick={logout}
             className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:border-neutral-500"
           >
-            Sign out
+            {t("common.signOut")}
           </button>
         </div>
       </header>
@@ -705,7 +720,7 @@ export function App() {
               direction={1}
               minSize={MIN_PROJECTS_WIDTH}
               maxSize={projectsMaxWidth}
-              ariaLabel="Resize project sidebar"
+              ariaLabel={t("app.nav.resizeSidebar")}
             />
           )}
           <main className="flex flex-1 overflow-hidden">
@@ -731,12 +746,12 @@ export function App() {
                     // reachable from this state too.
                     <div className="flex flex-1 items-center justify-center px-6 text-center">
                       <div className="space-y-3 text-sm text-neutral-400">
-                        <p>No projects yet.</p>
+                        <p>{t("projects.sidebar.empty")}</p>
                         <button
                           onClick={() => setSetupPickerDismissed(false)}
                           className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
                         >
-                          + New project
+                          {t("app.empty.newProject")}
                         </button>
                       </div>
                     </div>
@@ -772,7 +787,7 @@ export function App() {
                     <div className="space-y-3 text-sm text-neutral-400">
                       <h2 className="text-xl font-semibold text-neutral-100">{active.name}</h2>
                       <p className="font-mono text-xs">{active.path}</p>
-                      <p>Pick a session from the sidebar — or start a new one here.</p>
+                      <p>{t("app.empty.pickSession")}</p>
                       <button
                         onClick={() => {
                           // Fire-and-forget; createSession sets the
@@ -784,13 +799,13 @@ export function App() {
                         }}
                         className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-white"
                       >
-                        + New session
+                        {t("app.empty.newSession")}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-1 items-center justify-center">
-                    <p className="text-sm text-neutral-400">Select a project from the sidebar.</p>
+                    <p className="text-sm text-neutral-400">{t("app.empty.selectProject")}</p>
                   </div>
                 )}
               </div>
@@ -873,36 +888,27 @@ export function App() {
                           // tool boundary.
                           (["files", "search", "processes", "context"] as const)
                         : (["files", "search", "changes", "git", "processes", "context"] as const)
-                      ).map((t) => (
+                      ).map((tabId) => (
                         <button
-                          key={t}
-                          onClick={() => setRightTabPersisted(t)}
+                          key={tabId}
+                          onClick={() => setRightTabPersisted(tabId)}
                           className={`flex items-center gap-1 px-3 py-1.5 text-[11px] uppercase tracking-wider ${
-                            rightTab === t
+                            rightTab === tabId
                               ? "border-b border-neutral-100 text-neutral-100"
                               : "text-neutral-500 hover:text-neutral-300"
                           }`}
                         >
-                          {/* Internal key stays "changes" for backwards-compat with
-                              persisted localStorage; user-visible label is "Last turn"
-                              so it's distinct from the Git tab's working-tree changes. */}
-                          {t === "files"
-                            ? "Files"
-                            : t === "search"
-                              ? "Search"
-                              : t === "changes"
-                                ? "Last turn"
-                                : t === "git"
-                                  ? "Git"
-                                  : t === "processes"
-                                    ? "Processes"
-                                    : "Context"}
-                          {t === "git" && gitChangedCount > 0 && (
+                          {/* Labels come from RIGHT_TAB_LABELS: the internal key
+                              stays "changes" for backwards-compat with persisted
+                              localStorage, while the user-visible label is "Last
+                              turn" so it's distinct from the Git tab. */}
+                          {t(RIGHT_TAB_LABELS[tabId])}
+                          {tabId === "git" && gitChangedCount > 0 && (
                             <span className="rounded bg-amber-900/40 px-1 py-0.5 text-[9px] text-amber-300 light:bg-amber-100 light:text-amber-800">
                               {gitChangedCount}
                             </span>
                           )}
-                          {t === "processes" && runningProcessCount > 0 && (
+                          {tabId === "processes" && runningProcessCount > 0 && (
                             <span className="rounded bg-emerald-900/40 px-1 py-0.5 text-[9px] text-emerald-300 light:bg-emerald-100 light:text-emerald-800">
                               {runningProcessCount}
                             </span>

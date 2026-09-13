@@ -6,6 +6,7 @@ import {
   type AskQuestion,
   type PendingAskQuestion,
 } from "../store/ask-user-question-store";
+import { useT } from "../i18n";
 
 /**
  * Inline panel that surfaces a pending `ask_user_question` tool
@@ -47,6 +48,7 @@ interface PendingAnswer {
 }
 
 function PanelBody({ pending }: { pending: PendingAskQuestion }) {
+  const t = useT();
   const clearPending = useAskUserQuestionStore((s) => s.clearPending);
   const [tab, setTab] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -177,7 +179,7 @@ function PanelBody({ pending }: { pending: PendingAskQuestion }) {
       <div className="flex flex-col overflow-hidden">
         <header className="flex items-center gap-2 border-b border-neutral-800 px-4 py-2 light:border-neutral-200">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 light:text-amber-700">
-            Agent question
+            {t("chatView.question.header")}
           </span>
           {pending.questions.length > 1 && (
             <div className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-neutral-500">
@@ -200,7 +202,10 @@ function PanelBody({ pending }: { pending: PendingAskQuestion }) {
           )}
           <div className="flex-1" />
           <span className="text-[10px] uppercase tracking-wider text-neutral-500">
-            {tab + 1} of {pending.questions.length}
+            {t("chatView.question.progress", {
+              current: tab + 1,
+              total: pending.questions.length,
+            })}
           </span>
         </header>
 
@@ -224,10 +229,10 @@ function PanelBody({ pending }: { pending: PendingAskQuestion }) {
             onClick={() => void chatAboutThis()}
             disabled={submitting}
             className="flex items-center gap-1 rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-500 disabled:opacity-50 light:border-neutral-400 light:text-neutral-700"
-            title="Abandon the structured questionnaire and reply in free-form chat"
+            title={t("chatView.question.chatAboutThisTitle")}
           >
             <MessageCircle size={12} />
-            Chat about this
+            {t("chatView.question.chatAboutThis")}
           </button>
           <div className="flex-1" />
           {tab > 0 && (
@@ -238,7 +243,7 @@ function PanelBody({ pending }: { pending: PendingAskQuestion }) {
               className="flex items-center gap-1 rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-500 disabled:opacity-50 light:border-neutral-400 light:text-neutral-700"
             >
               <ChevronLeft size={12} />
-              Back
+              {t("common.back")}
             </button>
           )}
           <button
@@ -250,12 +255,12 @@ function PanelBody({ pending }: { pending: PendingAskQuestion }) {
             {submitting ? <Loader2 size={12} className="animate-spin" /> : null}
             {tab < pending.questions.length - 1 ? (
               <>
-                Next <ChevronRight size={12} />
+                {t("common.next")} <ChevronRight size={12} />
               </>
             ) : submitting ? (
-              "Submitting…"
+              t("chatView.question.submitting")
             ) : (
-              "Submit"
+              t("common.submit")
             )}
           </button>
         </footer>
@@ -273,6 +278,7 @@ function QuestionView({
   draft: PendingAnswer | null;
   onChange: (patch: Partial<PendingAnswer>) => void;
 }) {
+  const t = useT();
   const hasAnyPreview = useMemo(
     () => question.options.some((o) => typeof o.preview === "string" && o.preview.length > 0),
     [question.options],
@@ -337,7 +343,7 @@ function QuestionView({
               </pre>
             ) : (
               <p className="text-xs italic text-neutral-500 light:text-neutral-600">
-                No preview for this option.
+                {t("chatView.question.noPreview")}
               </p>
             )}
           </div>
@@ -400,13 +406,13 @@ function QuestionView({
           {showCustomInput && (
             <div className="pt-2">
               <label className="mb-1 block text-[10px] uppercase tracking-wider text-neutral-500 light:text-neutral-600">
-                Type something
+                {t("chatView.question.typeSomething")}
               </label>
               <textarea
                 value={draft?.customText ?? ""}
                 onChange={(e) => onChange({ customText: e.target.value, selectedLabel: undefined })}
                 rows={2}
-                placeholder="Or type your own answer…"
+                placeholder={t("chatView.question.customPlaceholder")}
                 className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-100 light:border-neutral-300 light:bg-white light:text-neutral-900"
               />
             </div>

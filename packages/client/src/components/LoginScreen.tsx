@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { authColorStyle } from "../lib/auth-colors";
 import { appUrl } from "../lib/base-path";
+import { useT } from "../i18n";
 import { useAuthStore } from "../store/auth-store";
 import { useUiConfigStore } from "../store/ui-config-store";
 
@@ -72,6 +73,7 @@ function sanitizeBannerHtml(html: string): string {
 }
 
 export function LoginScreen() {
+  const t = useT();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const login = useAuthStore((s) => s.login);
@@ -119,13 +121,15 @@ export function LoginScreen() {
             </div>
             <p className="text-sm text-[var(--auth-muted-text)]">
               {ldapEnabled
-                ? "Sign in with your LDAP account."
-                : `Enter the ${appName} password to continue.`}
+                ? t("auth.login.subtitleLdap")
+                : t("auth.login.subtitlePassword", { appName })}
             </p>
           </header>
           {ldapEnabled && (
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-[var(--auth-text)]">Username</span>
+              <span className="text-sm font-medium text-[var(--auth-text)]">
+                {t("common.username")}
+              </span>
               <input
                 type="text"
                 value={username}
@@ -137,7 +141,9 @@ export function LoginScreen() {
             </label>
           )}
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-[var(--auth-text)]">Password</span>
+            <span className="text-sm font-medium text-[var(--auth-text)]">
+              {t("common.password")}
+            </span>
             <input
               type="password"
               value={password}
@@ -151,13 +157,13 @@ export function LoginScreen() {
             <p role="alert" className="text-sm text-red-400">
               {error === "invalid_password"
                 ? ldapEnabled
-                  ? "Incorrect username, password, or LDAP group."
-                  : "Incorrect password."
+                  ? t("auth.login.errorInvalidCredentialsLdap")
+                  : t("auth.login.errorInvalidPassword")
                 : error === "username_required"
-                  ? "Username is required."
+                  ? t("auth.login.errorUsernameRequired")
                   : error === "login_locked" || error.startsWith("too many failed login attempts")
                     ? error
-                    : `Login failed: ${error}`}
+                    : t("auth.login.errorFailed", { code: error })}
             </p>
           )}
           <button
@@ -167,14 +173,14 @@ export function LoginScreen() {
             }
             className="w-full rounded-md bg-[var(--auth-button-bg)] px-3 py-2 text-sm font-medium text-[var(--auth-button-text)] transition hover:bg-[var(--auth-button-hover-bg)] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {pending ? "Signing in…" : "Sign in"}
+            {pending ? t("auth.login.submitting") : t("common.signIn")}
           </button>
         </form>
         {hasAuthBanner &&
           (authBannerHtml ? (
             <section
               className="w-fit max-w-full whitespace-normal break-words rounded-lg border border-[var(--auth-border)] bg-[var(--auth-card-bg)] p-4 text-sm text-[var(--auth-text)] shadow-lg [&_*]:max-w-none [&_a]:text-sky-300 [&_a]:underline [&_code]:rounded [&_code]:bg-[var(--auth-page-bg)] [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:max-w-none [&_pre]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-5"
-              aria-label="Authentication notice"
+              aria-label={t("auth.login.bannerAriaLabel")}
               // AUTH_BANNER_HTML is operator opt-in and still sanitized
               // above; plain text uses React escaping + whitespace-preserve.
               dangerouslySetInnerHTML={{ __html: sanitizedBannerHtml }}
@@ -182,7 +188,7 @@ export function LoginScreen() {
           ) : (
             <section
               className="w-fit max-w-full whitespace-pre-wrap break-words rounded-lg border border-[var(--auth-border)] bg-[var(--auth-card-bg)] p-4 text-sm text-[var(--auth-text)] shadow-lg"
-              aria-label="Authentication notice"
+              aria-label={t("auth.login.bannerAriaLabel")}
             >
               {authBannerText}
             </section>

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { api } from "../lib/api-client";
 import type { SessionSearchGroup, SessionSearchMatch } from "../lib/api-client";
+import { useT } from "../i18n";
+import { localizeSessionName } from "../lib/session-name";
 import { useIsMobile } from "../lib/use-is-mobile";
 import { useProjectStore } from "../store/project-store";
 import { useSessionStore } from "../store/session-store";
@@ -25,6 +27,7 @@ import { useSessionStore } from "../store/session-store";
  * Bluetooth keyboard is paired with a phone.
  */
 export function GlobalSearchBar() {
+  const t = useT();
   const isMobile = useIsMobile();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SessionSearchGroup[]>([]);
@@ -113,7 +116,7 @@ export function GlobalSearchBar() {
     abortRef.current = ctrl;
     setLoading(true);
     setError(undefined);
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       api
         .searchSessions(query.trim(), { signal: ctrl.signal })
         .then((res) => {
@@ -128,15 +131,15 @@ export function GlobalSearchBar() {
           // Keep the previous results visible on transient errors —
           // dropping them under the user's cursor is jarring. Surface
           // the message instead.
-          const msg = err instanceof Error ? err.message : "search failed";
+          const msg = err instanceof Error ? err.message : t("files.search.errorFailed");
           setError(msg);
         });
     }, 250);
     return () => {
-      window.clearTimeout(t);
+      window.clearTimeout(timer);
       ctrl.abort();
     };
-  }, [query]);
+  }, [query, t]);
 
   // Mobile self-gate. Placed AFTER every hook so React's rules-of-hooks
   // are honored — the hooks above register listeners (Cmd+K, click-away,
@@ -170,8 +173,8 @@ export function GlobalSearchBar() {
       setActiveIndex((i) => Math.max(0, i - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const t = flatTargets[activeIndex];
-      if (t !== undefined) dispatchResult(t.group, t.match);
+      const target = flatTargets[activeIndex];
+      if (target !== undefined) dispatchResult(target.group, target.match);
     }
   };
 
@@ -193,9 +196,9 @@ export function GlobalSearchBar() {
   };
 
   const kindBadge = (kind: SessionSearchMatch["kind"]): string => {
-    if (kind === "user") return "you";
-    if (kind === "assistant") return "agent";
-    return "tool";
+    if (kind === "user") return t("files.globalSearch.kindYou");
+    if (kind === "assistant") return t("files.globalSearch.kindAgent");
+    return t("files.globalSearch.kindTool");
   };
 
   return (
@@ -215,8 +218,8 @@ export function GlobalSearchBar() {
             if (results.length > 0) setOpen(true);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search sessions…  ⌘K"
-          aria-label="Search across all sessions"
+          placeholder={t("files.globalSearch.placeholder")}
+          aria-label={t("files.globalSearch.ariaLabel")}
           className="w-64 rounded-md border border-neutral-700 bg-neutral-900 py-1 pl-7 pr-7 text-xs text-neutral-200 placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
         />
         {query.length > 0 && (
@@ -228,7 +231,7 @@ export function GlobalSearchBar() {
               setOpen(false);
               inputRef.current?.focus();
             }}
-            aria-label="Clear search"
+            aria-label={t("files.globalSearch.clearAria")}
             className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
           >
             <X size={12} />
@@ -238,15 +241,17 @@ export function GlobalSearchBar() {
       {open && (
         <div
           role="listbox"
-          aria-label="Search results"
+          aria-label={t("files.globalSearch.resultsAria")}
           className="absolute right-0 top-full z-50 mt-1 max-h-[60vh] w-96 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-900 shadow-xl"
         >
-          {loading && <div className="px-3 py-2 text-xs text-neutral-400">Searching…</div>}
+          {loading && (
+            <div className="px-3 py-2 text-xs text-neutral-400">{t("files.search.searching")}</div>
+          )}
           {!loading && error !== undefined && (
             <div className="px-3 py-2 text-xs text-amber-400 light:text-amber-700">{error}</div>
           )}
           {!loading && error === undefined && flatTargets.length === 0 && (
-            <div className="px-3 py-2 text-xs text-neutral-500">No matches.</div>
+            <div className="px-3 py-2 text-xs text-neutral-500">{t("files.search.noMatches")}</div>
           )}
           {flatTargets.length > 0 && (
             <div>
@@ -258,14 +263,14 @@ export function GlobalSearchBar() {
                       <>
                         <span className="mx-1.5 text-neutral-600">/</span>
                         <span className="text-neutral-400 normal-case tracking-normal">
-                          {group.sessionName}
+                          {localizeSessionName(group.sessionName, t)}
                         </span>
                       </>
                     )}
                   </div>
                   {group.matches.map((match, mi) => {
                     const flatIndex = flatTargets.findIndex(
-                      (t) => t.groupIndex === gi && t.matchIndex === mi,
+                      (flat) => flat.groupIndex === gi && flat.matchIndex === mi,
                     );
                     const isActive = flatIndex === activeIndex;
                     return (

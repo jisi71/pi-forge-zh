@@ -46,6 +46,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { themeDef, useThemeStore } from "../lib/theme";
+import { useT } from "../i18n";
 // KaTeX styles — pulled into the bundle by Vite. Without this, the math
 // nodes that rehype-katex emits land in the DOM with no fonts/spacing
 // applied and look like raw HTML.
@@ -58,6 +59,7 @@ import "katex/dist/katex.min.css";
  * idle → copied (1.2s) → idle, so the user gets a visible confirmation.
  */
 function CodeCopyButton({ code }: { code: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const onClick = (): void => {
     if (code.length === 0) return;
@@ -94,8 +96,8 @@ function CodeCopyButton({ code }: { code: string }) {
       // Mobile: always visible, ≥ 44 px tap target (no hover on touch).
       // Desktop: hover-revealed via group-hover, compact size.
       className="absolute right-1 top-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-neutral-800/80 p-1 text-neutral-400 transition-opacity hover:text-neutral-100 focus:opacity-100 md:min-h-0 md:min-w-0 md:opacity-0 md:group-hover:opacity-100"
-      title="Copy code block"
-      aria-label="Copy code block"
+      title={t("chatView.markdown.copyCode")}
+      aria-label={t("chatView.markdown.copyCode")}
     >
       {copied ? <Check size={14} /> : <Copy size={14} />}
     </button>

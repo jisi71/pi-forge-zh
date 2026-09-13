@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError, parseCloneEventStream, type BrowseEntry } from "../lib/api-client";
 import { useProjectStore } from "../store/project-store";
 import { useUiConfigStore } from "../store/ui-config-store";
+import { useT } from "../i18n";
 
 interface Props {
   onClose: () => void;
@@ -26,6 +27,7 @@ type Mode = "create" | "clone";
 type Step = "name" | "browse";
 
 export function ProjectPicker({ onClose, required = false }: Props) {
+  const t = useT();
   const create = useProjectStore((s) => s.create);
   const minimal = useUiConfigStore((s) => s.minimal);
   const workspaceRoot = useUiConfigStore((s) => s.workspaceRoot);
@@ -147,17 +149,17 @@ export function ProjectPicker({ onClose, required = false }: Props) {
         <header className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold tracking-tight">
             {mode === "clone"
-              ? "Clone repository"
+              ? t("projects.picker.titleClone")
               : step === "name"
-                ? "New project"
-                : `Pick a folder for "${name.trim()}"`}
+                ? t("projects.picker.titleNew")
+                : t("projects.picker.titlePick", { name: name.trim() })}
           </h2>
           {!required && (
             <button
               onClick={onClose}
               className="rounded-md px-2 py-1 text-sm text-neutral-400 hover:bg-neutral-800"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           )}
         </header>
@@ -165,10 +167,10 @@ export function ProjectPicker({ onClose, required = false }: Props) {
         {step === "name" && (
           <div className="mb-3 flex gap-1 border-b border-neutral-800">
             <ModeTab active={mode === "create"} onClick={() => setMode("create")}>
-              Create / pick folder
+              {t("projects.picker.tabCreate")}
             </ModeTab>
             <ModeTab active={mode === "clone"} onClick={() => setMode("clone")}>
-              Clone repository
+              {t("projects.picker.tabClone")}
             </ModeTab>
           </div>
         )}
@@ -182,7 +184,9 @@ export function ProjectPicker({ onClose, required = false }: Props) {
             className="space-y-4"
           >
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-neutral-300">Project name</span>
+              <span className="text-sm font-medium text-neutral-300">
+                {t("projects.picker.projectName")}
+              </span>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -191,19 +195,27 @@ export function ProjectPicker({ onClose, required = false }: Props) {
               />
               {minimal && workspaceRoot.length > 0 && (
                 <span className="block font-mono text-[11px] text-neutral-500">
-                  Will create {workspaceRoot}/{name.trim().length > 0 ? name.trim() : "<name>"}
+                  {t("projects.picker.willCreate", {
+                    path: `${workspaceRoot}/${name.trim().length > 0 ? name.trim() : "<name>"}`,
+                  })}
                 </span>
               )}
             </label>
             {error !== undefined && (
-              <p className="text-xs text-red-400 light:text-red-700">Error: {error}</p>
+              <p className="text-xs text-red-400 light:text-red-700">
+                {t("projects.error.label", { code: error })}
+              </p>
             )}
             <button
               type="submit"
               disabled={name.trim().length === 0 || submitting}
               className="w-full rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 disabled:opacity-50"
             >
-              {minimal ? (submitting ? "Creating…" : "Create project") : "Next: pick folder"}
+              {minimal
+                ? submitting
+                  ? t("common.creating")
+                  : t("projects.picker.createProject")
+                : t("projects.picker.nextPickFolder")}
             </button>
           </form>
         )}
@@ -230,16 +242,26 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                 onClick={goUp}
                 disabled={parentPath === null}
                 className="rounded-md border border-neutral-700 px-2 py-1 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-                title={parentPath === null ? "At workspace root" : "Up one folder"}
+                title={
+                  parentPath === null
+                    ? t("projects.picker.atWorkspaceRoot")
+                    : t("projects.picker.upOneFolder")
+                }
               >
-                ↑ up
+                {t("projects.picker.up")}
               </button>
-              <code className="truncate font-mono text-neutral-300">{path ?? "(loading)"}</code>
+              <code className="truncate font-mono text-neutral-300">
+                {path ?? t("projects.picker.pathLoading")}
+              </code>
             </div>
             <div className="max-h-64 overflow-y-auto rounded-md border border-neutral-800 bg-neutral-950">
-              {loadingBrowse && <div className="px-3 py-2 text-sm text-neutral-400">Loading…</div>}
+              {loadingBrowse && (
+                <div className="px-3 py-2 text-sm text-neutral-400">{t("common.loading")}</div>
+              )}
               {!loadingBrowse && entries.length === 0 && (
-                <div className="px-3 py-2 text-sm text-neutral-400">(empty)</div>
+                <div className="px-3 py-2 text-sm text-neutral-400">
+                  {t("projects.picker.emptyFolder")}
+                </div>
               )}
               {!loadingBrowse &&
                 entries.map((e) => (
@@ -264,7 +286,7 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                       disabled={submitting}
                       className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
                     >
-                      Select
+                      {t("projects.picker.select")}
                     </button>
                   </div>
                 ))}
@@ -275,7 +297,7 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                 <input
                   value={newFolderInput}
                   onChange={(e) => setNewFolderInput(e.target.value)}
-                  placeholder="folder name"
+                  placeholder={t("projects.picker.folderNamePlaceholder")}
                   className="flex-1 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm"
                   autoFocus
                 />
@@ -283,7 +305,7 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                   onClick={() => void createFolder()}
                   className="rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900"
                 >
-                  Create + select
+                  {t("projects.picker.createAndSelect")}
                 </button>
                 <button
                   onClick={() => {
@@ -292,7 +314,7 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                   }}
                   className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             ) : (
@@ -301,14 +323,14 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                   onClick={() => setStep("name")}
                   className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300"
                 >
-                  ← Back
+                  {t("projects.picker.back")}
                 </button>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowNewFolder(true)}
                     className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300"
                   >
-                    + New folder
+                    {t("projects.picker.newFolder")}
                   </button>
                   <button
                     onClick={() => path && void select(path)}
@@ -318,11 +340,11 @@ export function ProjectPicker({ onClose, required = false }: Props) {
                     className="rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 disabled:opacity-50"
                     title={
                       workspaceRoot.length > 0 && path === workspaceRoot
-                        ? "Pick a sub-folder — the workspace root itself can't be a project."
-                        : "Use this folder as the project root"
+                        ? t("projects.picker.pickSubfolder")
+                        : t("projects.picker.useThisFolder")
                     }
                   >
-                    Select this folder
+                    {t("projects.picker.selectThisFolder")}
                   </button>
                 </div>
               </div>
@@ -333,18 +355,18 @@ export function ProjectPicker({ onClose, required = false }: Props) {
         {error !== undefined && (
           <p className="mt-3 text-sm text-red-400 light:text-red-700">
             {error === "path_not_allowed"
-              ? "That folder is outside the workspace root."
+              ? t("projects.error.pathNotAllowed")
               : error === "workspace_root_not_allowed"
-                ? "Pick a sub-folder — the workspace root itself can't be a project."
+                ? t("projects.picker.pickSubfolder")
                 : error === "not_a_directory"
-                  ? "That path is not a directory."
+                  ? t("projects.error.notADirectory")
                   : error === "already_exists"
-                    ? "A folder with that name already exists."
+                    ? t("projects.error.alreadyExists")
                     : error === "duplicate_path"
-                      ? "Another project already points at that folder."
+                      ? t("projects.error.duplicatePath")
                       : error === "network_error"
-                        ? "Couldn't reach the server."
-                        : `Error: ${error}`}
+                        ? t("projects.error.networkError")
+                        : t("projects.error.label", { code: error })}
           </p>
         )}
       </div>
@@ -393,6 +415,7 @@ function CloneForm({
   onProjectCreated: (projectId: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
   const [token, setToken] = useState("");
@@ -455,7 +478,7 @@ function CloneForm({
     }
     setSubmitting(true);
     setError(undefined);
-    setPhase("starting…");
+    setPhase(t("projects.clone.phaseStarting"));
     setPercent(null);
     setLogLines([]);
 
@@ -487,8 +510,11 @@ function CloneForm({
       for await (const ev of parseCloneEventStream(res)) {
         switch (ev.type) {
           case "started":
-            setPhase("starting clone");
-            setLogLines((prev) => [...prev, `→ cloning ${ev.cloneUrlForDisplay}`]);
+            setPhase(t("projects.clone.phaseStartingClone"));
+            setLogLines((prev) => [
+              ...prev,
+              t("projects.clone.logCloning", { url: ev.cloneUrlForDisplay }),
+            ]);
             break;
           case "progress":
             setPhase(ev.phase);
@@ -501,7 +527,7 @@ function CloneForm({
             });
             break;
           case "done":
-            setPhase("clone complete, creating project…");
+            setPhase(t("projects.clone.phaseDone"));
             setPercent(100);
             break;
           case "project_created":
@@ -552,7 +578,7 @@ function CloneForm({
       className="space-y-3"
     >
       <label className="block space-y-1">
-        <span className="text-sm font-medium text-neutral-300">Repository URL</span>
+        <span className="text-sm font-medium text-neutral-300">{t("projects.clone.urlLabel")}</span>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -565,24 +591,28 @@ function CloneForm({
 
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-neutral-300">Branch (optional)</span>
+          <span className="text-sm font-medium text-neutral-300">
+            {t("projects.clone.branchLabel")}
+          </span>
           <input
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
-            placeholder="default branch"
+            placeholder={t("projects.clone.branchPlaceholder")}
             disabled={submitting}
             className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 font-mono text-xs outline-none focus:border-neutral-500 disabled:opacity-60"
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-neutral-300">Folder name</span>
+          <span className="text-sm font-medium text-neutral-300">
+            {t("projects.clone.folderLabel")}
+          </span>
           <input
             value={folderName}
             onChange={(e) => {
               setFolderName(e.target.value);
               setFolderTouched(true);
             }}
-            placeholder="auto from URL"
+            placeholder={t("projects.clone.folderPlaceholder")}
             disabled={submitting}
             className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 font-mono text-xs outline-none focus:border-neutral-500 disabled:opacity-60"
           />
@@ -590,39 +620,46 @@ function CloneForm({
       </div>
 
       <label className="block space-y-1">
-        <span className="text-sm font-medium text-neutral-300">Project name</span>
+        <span className="text-sm font-medium text-neutral-300">
+          {t("projects.picker.projectName")}
+        </span>
         <input
           value={projectName}
           onChange={(e) => {
             setProjectName(e.target.value);
             setProjectTouched(true);
           }}
-          placeholder="auto from folder"
+          placeholder={t("projects.clone.projectPlaceholder")}
           disabled={submitting}
           className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm outline-none focus:border-neutral-500 disabled:opacity-60"
         />
         {workspaceRoot.length > 0 && folderName.length > 0 && (
           <span className="block font-mono text-[11px] text-neutral-500">
-            Will clone into {workspaceRoot}/{folderName}
+            {t("projects.clone.willCloneInto", {
+              path: `${workspaceRoot}/${folderName}`,
+            })}
           </span>
         )}
       </label>
 
       <label className="block space-y-1">
         <span className="text-sm font-medium text-neutral-300">
-          Access token (optional, for private repos)
+          {t("projects.clone.tokenLabel")}
         </span>
         <input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="ghp_... / glpat_... / etc."
+          placeholder={t("projects.clone.tokenPlaceholder")}
           disabled={submitting}
           className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 font-mono text-xs outline-none focus:border-neutral-500 disabled:opacity-60"
         />
         <span className="block text-[11px] text-neutral-500">
-          Sent over HTTPS, embedded as <code>x-access-token:&lt;token&gt;</code> in the clone URL,
-          and stripped from <code>.git/config</code> after success.
+          {t("projects.clone.tokenHintPrefix")}
+          <code>x-access-token:&lt;token&gt;</code>
+          {t("projects.clone.tokenHintMiddle")}
+          <code>.git/config</code>
+          {t("projects.clone.tokenHintSuffix")}
         </span>
       </label>
 
@@ -636,14 +673,13 @@ function CloneForm({
         />
         <span>
           <span className="text-amber-200 light:text-amber-800">
-            Allow self-signed / invalid TLS certificate
+            {t("projects.clone.insecureTlsLabel")}
           </span>
           <br />
           <span className="text-[11px] text-amber-300/70 light:text-amber-700/80">
-            ⚠ Disables MITM protection for this clone and persists a URL-scoped local git config
-            entry for future fetch/pull/push. Use only for internal Git hosts with known self-signed
-            certs/private CAs. The server logs <code>git-clone-insecure-tls</code> to stderr on
-            every use.
+            {t("projects.clone.insecureTlsHintPrefix")}
+            <code>git-clone-insecure-tls</code>
+            {t("projects.clone.insecureTlsHintSuffix")}
           </span>
         </span>
       </label>
@@ -651,7 +687,7 @@ function CloneForm({
       {(submitting || phase !== undefined) && (
         <div className="space-y-1 rounded-md border border-neutral-800 bg-neutral-950 p-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-neutral-300">{phase ?? "starting…"}</span>
+            <span className="text-neutral-300">{phase ?? t("projects.clone.phaseStarting")}</span>
             <span className="font-mono text-neutral-500">
               {percent !== null ? `${percent}%` : ""}
             </span>
@@ -671,7 +707,7 @@ function CloneForm({
               className="pt-1"
             >
               <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300">
-                Raw output ({logLines.length})
+                {t("projects.clone.rawOutput", { count: logLines.length })}
               </summary>
               <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-neutral-400">
                 {logLines.join("\n")}
@@ -682,7 +718,9 @@ function CloneForm({
       )}
 
       {error !== undefined && (
-        <p className="text-xs text-red-400 light:text-red-700">Error: {error}</p>
+        <p className="text-xs text-red-400 light:text-red-700">
+          {t("projects.error.label", { code: error })}
+        </p>
       )}
 
       <div className="flex justify-end gap-2 pt-1">
@@ -691,7 +729,7 @@ function CloneForm({
           onClick={onCancelClone}
           className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300"
         >
-          {submitting ? "Cancel clone" : "Cancel"}
+          {submitting ? t("projects.clone.cancelClone") : t("common.cancel")}
         </button>
         <button
           type="submit"
@@ -703,7 +741,7 @@ function CloneForm({
           }
           className="rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 disabled:opacity-50"
         >
-          {submitting ? "Cloning…" : "Clone + create project"}
+          {submitting ? t("projects.clone.cloning") : t("projects.clone.submit")}
         </button>
       </div>
     </form>

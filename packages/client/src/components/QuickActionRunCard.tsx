@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Loader2, MessageSquarePlus, Terminal, X } from "lucide-react";
 import { useQuickActionRunsStore, type QuickActionRun } from "../store/quick-actions-store";
 import { useComposerStore } from "../store/composer-store";
+import { useT } from "../i18n";
 
 interface Props {
   run: QuickActionRun;
@@ -25,6 +26,7 @@ function formatDuration(ms: number): string {
  *   composer for the next prompt.
  */
 export function QuickActionRunCard({ run }: Props) {
+  const t = useT();
   const removeRun = useQuickActionRunsStore((s) => s.removeRun);
   const setPendingInsert = useComposerStore((s) => s.setPendingInsert);
   const [expanded, setExpanded] = useState(false);
@@ -45,16 +47,16 @@ export function QuickActionRunCard({ run }: Props) {
       : "border-l-red-500 light:border-l-red-600";
 
   const statusLabel = isRunning
-    ? "running"
+    ? t("chatInput.runCard.statusRunning")
     : isError
-      ? "error"
+      ? t("chatInput.runCard.statusError")
       : result?.timedOut === true
-        ? "timed out"
+        ? t("chatInput.runCard.statusTimedOut")
         : run.status === "aborted"
-          ? "aborted"
+          ? t("chatInput.runCard.statusAborted")
           : exitCode === 0
-            ? "exit 0"
-            : `exit ${exitCode ?? "?"}`;
+            ? t("chatInput.runCard.statusExitZero")
+            : t("chatInput.runCard.statusExitCode", { code: exitCode ?? "?" });
 
   // Combined output for the "Use as context" button. Kept simple —
   // fenced with the action name so the agent has framing without us
@@ -106,9 +108,9 @@ export function QuickActionRunCard({ run }: Props) {
         {result?.truncated === true && (
           <span
             className="rounded bg-amber-700/40 px-1 text-[10px] text-amber-100 light:bg-amber-200 light:text-amber-900"
-            title="Output exceeded the per-stream cap and was cut off"
+            title={t("chatInput.runCard.truncatedTitle")}
           >
-            truncated
+            {t("chatInput.runCard.truncated")}
           </span>
         )}
         <div className="flex-1" />
@@ -124,9 +126,9 @@ export function QuickActionRunCard({ run }: Props) {
               useQuickActionRunsStore.getState().updateRun(run.runId, { status: "aborted" });
             }}
             className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 light:text-neutral-600 light:hover:bg-neutral-200"
-            title="Stop waiting on this run (server-side abort coming later)"
+            title={t("chatInput.runCard.stopTitle")}
           >
-            Stop
+            {t("common.stop")}
           </button>
         ) : (
           <>
@@ -135,19 +137,19 @@ export function QuickActionRunCard({ run }: Props) {
                 type="button"
                 onClick={() => setPendingInsert(run.sessionId, buildContextSnippet())}
                 className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-sky-400 hover:bg-neutral-800 hover:text-sky-200 light:text-sky-700 light:hover:bg-neutral-200 light:hover:text-sky-900"
-                title="Insert the captured output into the composer for your next prompt"
+                title={t("chatInput.runCard.useAsContextTitle")}
               >
                 <MessageSquarePlus size={11} />
-                Use as context
+                {t("chatInput.runCard.useAsContext")}
               </button>
             )}
             <button
               type="button"
               onClick={() => removeRun(run.runId)}
               className="rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200 light:text-neutral-500 light:hover:bg-neutral-200 light:hover:text-neutral-900"
-              title="Dismiss"
+              title={t("common.dismiss")}
             >
-              Dismiss
+              {t("common.dismiss")}
             </button>
           </>
         )}
@@ -160,7 +162,7 @@ export function QuickActionRunCard({ run }: Props) {
           onClick={() => setExpanded((v) => !v)}
           className="mt-1 cursor-pointer text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300 light:text-neutral-600 light:hover:text-neutral-900"
         >
-          {expanded ? "Hide output" : "Show output"}
+          {expanded ? t("chatInput.runCard.hideOutput") : t("chatInput.runCard.showOutput")}
         </button>
       ) : null}
       {expanded && (

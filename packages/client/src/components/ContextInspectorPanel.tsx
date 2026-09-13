@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { ChevronDown, ChevronRight, Code2, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { Highlight, themes as prismThemes } from "prism-react-renderer";
+import { t, useT, type TranslateKey } from "../i18n";
 import { api, ApiError, type ContextTurn, type SessionContextResponse } from "../lib/api-client";
 import { useSessionStore } from "../store/session-store";
 
@@ -21,6 +22,21 @@ import { useSessionStore } from "../store/session-store";
 const CHARS_PER_TOKEN = 3;
 
 /**
+ * Message role badge copy, keyed by the raw `message.role` value so the
+ * localized label never feeds the `roleClass()` / `isCompacted` checks.
+ * A role with no key here renders verbatim.
+ */
+const ROLE_LABEL_KEYS: Record<string, TranslateKey> = {
+  user: "orchestration.context.roleLabels.user",
+  assistant: "orchestration.context.roleLabels.assistant",
+  tool: "orchestration.context.roleLabels.tool",
+  toolResult: "orchestration.context.roleLabels.toolResult",
+  system: "orchestration.context.roleLabels.system",
+  compactionSummary: "orchestration.context.roleLabels.compactionSummary",
+  unknown: "orchestration.context.roleLabels.unknown",
+};
+
+/**
  * Phase 16 — Context & Token Inspector.
  *
  * Right-pane tab showing the messages the agent will send to the
@@ -39,6 +55,7 @@ const CHARS_PER_TOKEN = 3;
  * inspector itself can stay compact in the right pane.
  */
 export function ContextInspectorPanel() {
+  const t = useT();
   const sessionId = useSessionStore((s) => s.activeSessionId);
   const agentEndCount = useSessionStore((s) =>
     sessionId !== undefined ? (s.agentEndCountBySession[sessionId] ?? 0) : 0,
@@ -127,7 +144,7 @@ export function ContextInspectorPanel() {
   if (sessionId === undefined) {
     return (
       <div className="flex h-full items-center justify-center px-4 py-6 text-center text-xs italic text-neutral-500">
-        Select a session to inspect its context.
+        {t("orchestration.context.selectSession")}
       </div>
     );
   }
@@ -136,7 +153,7 @@ export function ContextInspectorPanel() {
     <div className="forge-context-inspector flex h-full flex-col bg-neutral-950 text-xs text-neutral-200">
       <div className="forge-context-inspector-header flex items-center justify-between border-b border-neutral-800 bg-neutral-900/40 px-3 py-1.5">
         <span className="text-[10px] uppercase tracking-wider text-neutral-400">
-          Context inspector
+          {t("orchestration.context.title")}
         </span>
         <div className="flex items-center gap-1">
           {loading && <Loader2 size={11} className="animate-spin text-neutral-500" />}
@@ -144,7 +161,7 @@ export function ContextInspectorPanel() {
             onClick={() => void refresh()}
             disabled={loading}
             className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
-            title="Refresh"
+            title={t("common.refresh")}
           >
             <RefreshCw size={11} className={loading ? "animate-spin" : ""} />
           </button>
@@ -160,7 +177,7 @@ export function ContextInspectorPanel() {
       <div className="flex-1 overflow-y-auto">
         {data === undefined ? (
           <div className="px-4 py-6 text-center text-xs italic text-neutral-500">
-            {loading ? "Loading…" : "No data — try refresh."}
+            {loading ? t("common.loading") : t("orchestration.context.noData")}
           </div>
         ) : (
           <>
@@ -186,7 +203,7 @@ export function ContextInspectorPanel() {
 
       {rawView !== undefined && (
         <RawJsonModal
-          title={`Message ${rawView.index} — raw AgentMessage JSON`}
+          title={t("orchestration.context.rawTitle", { index: rawView.index })}
           payload={rawView.payload}
           onClose={() => setRawView(undefined)}
         />
@@ -206,6 +223,7 @@ function TokenSummary({
   turnsExpanded: boolean;
   onToggleTurns: () => void;
 }) {
+  const t = useT();
   const cu = data.contextUsage;
   // Always derive the bar percent from tokens / contextWindow rather
   // than honoring the SDK's `percent` field. The SDK reports percent
@@ -234,16 +252,19 @@ function TokenSummary({
   );
   const usageTokens = cu.tokens ?? breakdown.total;
   const usagePct = cu.contextWindow > 0 ? Math.min(1, usageTokens / cu.contextWindow) : 0;
-  const usageLabel = cu.tokens === undefined ? "estimate" : "current";
+  const usageLabel =
+    cu.tokens === undefined
+      ? t("orchestration.context.usageEstimate")
+      : t("orchestration.context.usageCurrent");
   return (
     <div className="space-y-2 border-b border-neutral-800 px-3 py-2">
       {/* Context-window bar */}
       <div>
         <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-400">
-          <span>Context window ({usageLabel})</span>
+          <span>{t("orchestration.context.contextWindow", { label: usageLabel })}</span>
           <span>
             {formatTokens(usageTokens)} /{" "}
-            {cu.contextWindow > 0 ? formatTokens(cu.contextWindow) : "unknown"}
+            {cu.contextWindow > 0 ? formatTokens(cu.contextWindow) : t("common.unknown")}
             {cu.contextWindow > 0 && (
               <span className="ml-1 text-neutral-600">({(usagePct * 100).toFixed(1)}%)</span>
             )}
@@ -283,13 +304,16 @@ function TokenSummary({
             const lastNew = newDeltas.get(last.index) ?? 0;
             return (
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-neutral-500">Last turn</span>
+                <span className="text-neutral-500">{t("orchestration.context.lastTurn")}</span>
                 <span
                   className="font-mono text-neutral-300"
-                  title="New = user message + tool results since the prior assistant turn (estimate). Out = assistant output tokens. Cost = that turn's billed cost."
+                  title={t("orchestration.context.lastTurnTooltip")}
                 >
-                  ~{formatTokens(lastNew)} new · {formatTokens(last.outputTokens)} out ·{" "}
-                  {formatUsd(last.cost)}
+                  {t("orchestration.context.lastTurnFormula", {
+                    newTokens: formatTokens(lastNew),
+                    outTokens: formatTokens(last.outputTokens),
+                    cost: formatUsd(last.cost),
+                  })}
                 </span>
               </div>
             );
@@ -308,18 +332,18 @@ function TokenSummary({
         <div className="flex items-center justify-between text-[11px]">
           <span
             className="text-neutral-500"
-            title="Sum of `usage.input` per turn — NEW non-cached input the LLM saw across the session. Excludes cached portions (tracked separately below)."
+            title={t("orchestration.context.inputLifetimeTooltip")}
           >
-            Input (lifetime)
+            {t("orchestration.context.inputLifetime")}
           </span>
           <span className="font-mono text-neutral-400">{formatTokens(data.totalInputTokens)}</span>
         </div>
         <div className="flex items-center justify-between text-[11px]">
           <span
             className="text-neutral-500"
-            title="Sum of `usage.cacheRead` per turn — prior context served from the prompt cache. Counted ONCE PER API CALL: every turn re-reads the same cached content and re-pays the (discounted) read fee, so this number grows ~quadratically with conversation length. Billed at ~10% of input rate on most providers."
+            title={t("orchestration.context.cacheServedLifetimeTooltip")}
           >
-            Cache served (lifetime)
+            {t("orchestration.context.cacheServedLifetime")}
           </span>
           <span className="font-mono text-neutral-400">
             {formatTokens(data.totalCacheReadTokens)}
@@ -328,9 +352,9 @@ function TokenSummary({
         <div className="flex items-center justify-between text-[11px]">
           <span
             className="text-neutral-500"
-            title="Sum of `usage.cacheWrite` per turn — portions cached for reuse on subsequent turns. Billed at ~125% of input rate; small premium up front for big savings on the cache-served line."
+            title={t("orchestration.context.cacheWrittenLifetimeTooltip")}
           >
-            Cache written (lifetime)
+            {t("orchestration.context.cacheWrittenLifetime")}
           </span>
           <span className="font-mono text-neutral-400">
             {formatTokens(data.totalCacheWriteTokens)}
@@ -339,14 +363,14 @@ function TokenSummary({
         <div className="flex items-center justify-between text-[11px]">
           <span
             className="text-neutral-500"
-            title="Sum of `usage.output` per turn — assistant tokens generated."
+            title={t("orchestration.context.outputLifetimeTooltip")}
           >
-            Output (lifetime)
+            {t("orchestration.context.outputLifetime")}
           </span>
           <span className="font-mono text-neutral-400">{formatTokens(data.totalOutputTokens)}</span>
         </div>
         <div className="flex items-center justify-between text-[11px] font-medium">
-          <span className="text-neutral-300">Total cost</span>
+          <span className="text-neutral-300">{t("orchestration.context.totalCost")}</span>
           <span className="font-mono text-emerald-400 light:text-emerald-700">
             {formatUsd(data.totalCost)}
           </span>
@@ -361,7 +385,7 @@ function TokenSummary({
             className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-neutral-400 hover:text-neutral-200"
           >
             {turnsExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-            Per-turn ({data.turns.length})
+            {t("orchestration.context.perTurn", { count: data.turns.length })}
           </button>
           {turnsExpanded && <TurnsTable turns={data.turns} newDeltas={newDeltas} />}
         </div>
@@ -385,19 +409,35 @@ interface ContextBreakdownData {
 
 const BREAKDOWN_PALETTE: {
   key: keyof Omit<ContextBreakdownData, "total">;
-  label: string;
+  labelKey: TranslateKey;
   color: string;
 }[] = [
   // System prompt + tool schemas come first because they're the
   // fixed cost of every turn — useful to see at a glance how much
   // budget is "spent" before any user content.
-  { key: "systemAndTools", label: "System + tools", color: "#64748b" },
-  { key: "userPrompts", label: "User prompts", color: "#0ea5e9" },
-  { key: "assistantText", label: "Assistant text", color: "#a78bfa" },
-  { key: "thinking", label: "Thinking", color: "#71717a" },
-  { key: "toolCalls", label: "Tool calls", color: "#f59e0b" },
-  { key: "toolResults", label: "Tool results", color: "#10b981" },
-  { key: "images", label: "Images", color: "#ec4899" },
+  {
+    key: "systemAndTools",
+    labelKey: "orchestration.context.categories.systemAndTools",
+    color: "#64748b",
+  },
+  {
+    key: "userPrompts",
+    labelKey: "orchestration.context.categories.userPrompts",
+    color: "#0ea5e9",
+  },
+  {
+    key: "assistantText",
+    labelKey: "orchestration.context.categories.assistantText",
+    color: "#a78bfa",
+  },
+  { key: "thinking", labelKey: "orchestration.context.categories.thinking", color: "#71717a" },
+  { key: "toolCalls", labelKey: "orchestration.context.categories.toolCalls", color: "#f59e0b" },
+  {
+    key: "toolResults",
+    labelKey: "orchestration.context.categories.toolResults",
+    color: "#10b981",
+  },
+  { key: "images", labelKey: "orchestration.context.categories.images", color: "#ec4899" },
 ];
 
 function ContextBreakdown({
@@ -407,14 +447,15 @@ function ContextBreakdown({
   breakdown: ContextBreakdownData;
   contextWindow: number;
 }) {
+  const t = useT();
   const total = breakdown.total;
   if (total === 0) return null;
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-[10px] text-neutral-400">
-        <span>What&rsquo;s in the context</span>
-        <span className="text-neutral-600" title="Sum of category estimates (~chars/3)">
-          ~{formatTokens(total)} tok
+        <span>{t("orchestration.context.inContext")}</span>
+        <span className="text-neutral-600" title={t("orchestration.context.breakdownTooltip")}>
+          {t("orchestration.context.tokensApprox", { tokens: formatTokens(total) })}
           {contextWindow > 0 && (
             <span className="ml-1">({((total / contextWindow) * 100).toFixed(1)}%)</span>
           )}
@@ -433,7 +474,11 @@ function ContextBreakdown({
             <div
               key={c.key}
               style={{ width: `${pct}%`, background: c.color }}
-              title={`${c.label}: ${formatTokens(v)} tok (${pct.toFixed(1)}%)`}
+              title={t("orchestration.context.segmentTitle", {
+                label: t(c.labelKey),
+                tokens: formatTokens(v),
+                percent: pct.toFixed(1),
+              })}
             />
           );
         })}
@@ -450,7 +495,7 @@ function ContextBreakdown({
                 style={{ background: c.color }}
                 aria-hidden="true"
               />
-              <span className="flex-1 truncate text-neutral-400">{c.label}</span>
+              <span className="flex-1 truncate text-neutral-400">{t(c.labelKey)}</span>
               <span className="font-mono text-neutral-300">{formatTokens(v)}</span>
               <span className="w-10 text-right text-neutral-600">{pct.toFixed(0)}%</span>
             </li>
@@ -596,6 +641,7 @@ function TurnsTable({
   turns: ContextTurn[];
   newDeltas: Map<number, number>;
 }) {
+  const t = useT();
   // Columns answer four distinct questions per turn:
   //   New     — estimated NEW tokens this turn (user message + tool
   //             results since the prior assistant turn). The number
@@ -616,51 +662,66 @@ function TurnsTable({
         <thead className="text-neutral-500">
           <tr>
             <th className="pr-2 text-left font-normal">#</th>
-            <th className="pr-2 text-left font-normal">Model</th>
+            <th className="pr-2 text-left font-normal">{t("common.model")}</th>
             <th
               className="pr-2 text-right font-normal"
-              title="Estimated new tokens this turn — user message + tool results since the prior assistant turn (~chars/3 estimate). Distinct from Prompt."
+              title={t("orchestration.context.newColumnTooltip")}
             >
-              New
+              {t("orchestration.context.columns.new")}
             </th>
             <th
               className="pr-2 text-right font-normal"
-              title="Full prompt sent to the LLM = usage.input + cacheRead + cacheWrite. Includes ALL re-sent prior context — this grows monotonically with conversation length, which is normal LLM behavior."
+              title={t("orchestration.context.promptColumnTooltip")}
             >
-              Prompt
+              {t("orchestration.context.columns.prompt")}
             </th>
-            <th className="pr-2 text-right font-normal" title="Assistant output tokens this turn">
-              Out
+            <th
+              className="pr-2 text-right font-normal"
+              title={t("orchestration.context.outColumnTooltip")}
+            >
+              {t("orchestration.context.columns.out")}
             </th>
-            <th className="text-right font-normal" title="Cost billed for this turn">
-              Cost
+            <th
+              className="text-right font-normal"
+              title={t("orchestration.context.costColumnTooltip")}
+            >
+              {t("orchestration.context.columns.cost")}
             </th>
           </tr>
         </thead>
         <tbody className="text-neutral-300">
-          {turns.map((t, i) => {
-            const promptTotal = t.inputTokens + t.cacheReadTokens + t.cacheWriteTokens;
-            const newTokens = newDeltas.get(t.index) ?? 0;
+          {turns.map((turn, i) => {
+            const promptTotal = turn.inputTokens + turn.cacheReadTokens + turn.cacheWriteTokens;
+            const newTokens = newDeltas.get(turn.index) ?? 0;
             return (
-              <tr key={`${t.index}-${t.timestamp}`} className="border-t border-neutral-800/60">
+              <tr
+                key={`${turn.index}-${turn.timestamp}`}
+                className="border-t border-neutral-800/60"
+              >
                 <td className="pr-2 text-neutral-600">{i + 1}</td>
-                <td className="max-w-[140px] truncate pr-2" title={`${t.provider}/${t.model}`}>
-                  {t.model}
+                <td
+                  className="max-w-[140px] truncate pr-2"
+                  title={`${turn.provider}/${turn.model}`}
+                >
+                  {turn.model}
                 </td>
-                <td className="pr-2 text-right text-neutral-200" title="New content (estimate)">
+                <td
+                  className="pr-2 text-right text-neutral-200"
+                  title={t("orchestration.context.newContentTooltip")}
+                >
                   ~{formatTokens(newTokens)}
                 </td>
                 <td
                   className="pr-2 text-right"
-                  title={`input ${formatTokens(t.inputTokens)} + cR ${formatTokens(
-                    t.cacheReadTokens,
-                  )} + cW ${formatTokens(t.cacheWriteTokens)}`}
+                  title={`input ${formatTokens(turn.inputTokens)} + cR ${formatTokens(
+                    turn.cacheReadTokens,
+                  )} + cW ${formatTokens(turn.cacheWriteTokens)}`}
                 >
                   {formatTokens(promptTotal)}
                 </td>
-                <td className="pr-2 text-right">{formatTokens(t.outputTokens)}</td>
+                <td className="pr-2 text-right">{formatTokens(turn.outputTokens)}</td>
                 <td className="text-right text-emerald-400 light:text-emerald-700">
-                  {formatUsd(t.cost)}
+                  {formatUsd(turn.cost)}
                 </td>
               </tr>
             );
@@ -692,6 +753,7 @@ function MessageList({
   /** Ctx1 — synthetic tail row for the streaming-in-progress assistant. */
   streamingTail?: { content: string };
 }) {
+  const t = useT();
   // Ctx6 — case-insensitive search across role + preview text. Empty
   // query means "no filter" (the common case). Indexes are
   // preserved in the filtered view so onViewRaw still passes the
@@ -712,7 +774,9 @@ function MessageList({
     <div className="px-2 py-2">
       <div className="mb-1 flex items-center justify-between gap-2 px-1">
         <span className="shrink-0 text-[10px] uppercase tracking-wider text-neutral-400">
-          Messages ({q.length > 0 ? `${filtered.length}/${messages.length}` : messages.length})
+          {t("orchestration.context.messages", {
+            count: q.length > 0 ? `${filtered.length}/${messages.length}` : messages.length,
+          })}
         </span>
         <label className="flex items-center gap-1 text-[10px] text-neutral-500 hover:text-neutral-300">
           <input
@@ -721,7 +785,7 @@ function MessageList({
             onChange={onToggleThinking}
             className="h-3 w-3"
           />
-          Show thinking blocks
+          {t("orchestration.context.showThinking")}
         </label>
       </div>
       {/* Ctx6 — search box. Mounts only when there are enough
@@ -737,7 +801,7 @@ function MessageList({
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Find in messages…"
+            placeholder={t("orchestration.context.findPlaceholder")}
             className="w-full rounded border border-neutral-800 bg-neutral-950 py-1 pl-6 pr-2 text-[11px] text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
           />
         </div>
@@ -769,7 +833,7 @@ function MessageList({
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div className="flex items-center gap-1.5">
                   <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-violet-300 light:bg-violet-100 light:text-violet-800">
-                    assistant (streaming)
+                    {t("orchestration.context.streamingBadge")}
                   </span>
                 </div>
                 <p className="line-clamp-2 text-[11px] text-neutral-300">{streamingTail.content}</p>
@@ -793,8 +857,10 @@ function MessageRow({
   showThinking: boolean;
   onViewRaw: () => void;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const role = typeof message.role === "string" ? message.role : "unknown";
+  const roleKey = ROLE_LABEL_KEYS[role];
   // Pi's compaction emits a synthesized message via
   // `createCompactionSummaryMessage` with `role: "compactionSummary"`
   // — distinct from any standard role. The earlier heuristic
@@ -820,14 +886,16 @@ function MessageRow({
             <span
               className={`rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${roleClass(role)}`}
             >
-              {role}
+              {roleKey !== undefined ? t(roleKey) : role}
             </span>
             {isCompacted && (
               <span className="rounded bg-fuchsia-900/40 px-1.5 py-0.5 text-[9px] text-fuchsia-300 light:bg-fuchsia-100 light:text-fuchsia-800">
-                compacted
+                {t("orchestration.context.compactedBadge")}
               </span>
             )}
-            <span className="text-[10px] text-neutral-600">~{formatTokens(tokenEstimate)} tok</span>
+            <span className="text-[10px] text-neutral-600">
+              {t("orchestration.context.tokensApprox", { tokens: formatTokens(tokenEstimate) })}
+            </span>
             {ts > 0 && (
               <span className="text-[10px] text-neutral-600">
                 {new Date(ts).toLocaleTimeString()}
@@ -844,7 +912,7 @@ function MessageRow({
             onViewRaw();
           }}
           className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-100"
-          title="View raw AgentMessage JSON"
+          title={t("orchestration.context.viewRawTooltip")}
         >
           <Code2 size={11} />
         </button>
@@ -869,6 +937,7 @@ function RawJsonModal({
   payload: unknown;
   onClose: () => void;
 }) {
+  const t = useT();
   const json = useMemo(() => {
     try {
       return JSON.stringify(payload, null, 2);
@@ -900,7 +969,7 @@ function RawJsonModal({
           <button
             onClick={onClose}
             className="rounded p-2 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Close (Esc)"
+            title={t("common.closeEsc")}
           >
             <X size={20} />
           </button>
@@ -1054,9 +1123,12 @@ function renderExpanded(
     return (
       <div>
         <p className="mb-1 text-[10px] text-neutral-500">
-          tool: <span className="font-mono">{String(message.toolName ?? "unknown")}</span>{" "}
+          {t("orchestration.context.toolPrefix")}{" "}
+          <span className="font-mono">{String(message.toolName ?? t("common.unknown"))}</span>{" "}
           {message.isError === true && (
-            <span className="text-red-400 light:text-red-700">(error)</span>
+            <span className="text-red-400 light:text-red-700">
+              {t("orchestration.context.errorSuffix")}
+            </span>
           )}
         </p>
         <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-neutral-950 p-2 font-mono text-[10px] text-neutral-300">
@@ -1094,7 +1166,8 @@ function renderExpanded(
             return (
               <div key={`${index}-${i}`} className="rounded border border-neutral-800 p-2">
                 <p className="mb-1 text-[10px] text-neutral-500">
-                  tool call: <span className="font-mono">{String(o.name ?? "unknown")}</span>
+                  {t("orchestration.context.toolCallPrefix")}{" "}
+                  <span className="font-mono">{String(o.name ?? t("common.unknown"))}</span>
                 </p>
                 <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-neutral-300">
                   {jsonish(o.arguments)}
@@ -1105,7 +1178,7 @@ function renderExpanded(
           if (o.type === "image") {
             return (
               <p key={`${index}-${i}`} className="text-[11px] italic text-neutral-500">
-                [image attachment]
+                {t("orchestration.context.imageAttachment")}
               </p>
             );
           }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Circle, Loader2, X } from "lucide-react";
+import { useT } from "../i18n";
 import { api, ApiError } from "../lib/api-client";
 import {
   deriveCounts,
@@ -26,6 +27,7 @@ interface Props {
  * the store and the SSE handler takes over from there.
  */
 export function TodoPanel({ sessionId, onClose }: Props) {
+  const t = useT();
   const state = useTodoStore((s) => selectTodoState(s, sessionId));
   const setState = useTodoStore((s) => s.set);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
@@ -60,40 +62,50 @@ export function TodoPanel({ sessionId, onClose }: Props) {
     <div className="flex h-full flex-col overflow-hidden bg-neutral-950 text-neutral-200 light:bg-white light:text-neutral-900">
       <header className="flex items-center gap-2 border-b border-neutral-800 px-3 py-1.5 text-xs light:border-neutral-200">
         <span className="font-semibold uppercase tracking-wider text-neutral-400 light:text-neutral-600">
-          Todos
+          {t("orchestration.todos.title")}
         </span>
         <span className="text-neutral-500 light:text-neutral-600">
           {counts.completed}/{counts.total}
-          {counts.inProgress > 0 ? ` · ${counts.inProgress} in progress` : ""}
+          {counts.inProgress > 0
+            ? t("orchestration.todos.inProgressSuffix", { count: counts.inProgress })
+            : ""}
         </span>
         <div className="flex-1" />
         <button
           type="button"
           onClick={onClose}
           className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200 light:hover:bg-neutral-200 light:hover:text-neutral-900"
-          title="Hide todo panel"
+          title={t("orchestration.todos.hideTooltip")}
         >
           <X size={12} />
         </button>
       </header>
       {loadError !== undefined && state.tasks.length === 0 && (
         <div className="border-b border-red-700/40 bg-red-900/20 px-3 py-1.5 text-[11px] text-red-300 light:border-red-300 light:bg-red-50 light:text-red-800">
-          Failed to load todos: {loadError}
+          {t("orchestration.todos.loadFailed", { message: loadError })}
         </div>
       )}
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {counts.total === 0 ? (
           <p className="px-1 text-[11px] italic text-neutral-500 light:text-neutral-600">
-            No todos yet. The agent will add tasks here when it&apos;s planning multi-step work.
+            {t("orchestration.todos.empty")}
           </p>
         ) : (
           <div className="space-y-2">
             {groups.in_progress.length > 0 && (
-              <TaskGroup label="In Progress" tasks={groups.in_progress} />
+              <TaskGroup
+                label={t("orchestration.todos.groups.inProgress")}
+                tasks={groups.in_progress}
+              />
             )}
-            {groups.pending.length > 0 && <TaskGroup label="Pending" tasks={groups.pending} />}
+            {groups.pending.length > 0 && (
+              <TaskGroup label={t("orchestration.todos.groups.pending")} tasks={groups.pending} />
+            )}
             {groups.completed.length > 0 && (
-              <TaskGroup label="Completed" tasks={groups.completed} />
+              <TaskGroup
+                label={t("orchestration.todos.groups.completed")}
+                tasks={groups.completed}
+              />
             )}
           </div>
         )}
@@ -129,6 +141,7 @@ function TaskGroup({ label, tasks }: { label: string; tasks: readonly Task[] }) 
 }
 
 function TaskRow({ task }: { task: Task }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const hasDetails =
     task.description !== undefined ||
@@ -181,13 +194,18 @@ function TaskRow({ task }: { task: Task }) {
           {task.description !== undefined && <div>{task.description}</div>}
           {task.blockedBy !== undefined && task.blockedBy.length > 0 && (
             <div>
-              <span className="text-neutral-500 light:text-neutral-600">blocked by:</span>{" "}
+              <span className="text-neutral-500 light:text-neutral-600">
+                {t("orchestration.todos.blockedBy")}
+              </span>{" "}
               {task.blockedBy.map((id) => `#${id}`).join(", ")}
             </div>
           )}
           {task.owner !== undefined && (
             <div>
-              <span className="text-neutral-500 light:text-neutral-600">owner:</span> {task.owner}
+              <span className="text-neutral-500 light:text-neutral-600">
+                {t("orchestration.todos.owner")}
+              </span>{" "}
+              {task.owner}
             </div>
           )}
         </div>
@@ -203,12 +221,13 @@ function StatusIcon({
   status: TaskStatus;
   activeForm: string | undefined;
 }) {
+  const t = useT();
   if (status === "in_progress") {
     return (
       <Loader2
         size={11}
         className="mt-0.5 shrink-0 animate-spin text-amber-400 light:text-amber-700"
-        aria-label={activeForm ?? "in progress"}
+        aria-label={activeForm ?? t("orchestration.todos.status.inProgress")}
       />
     );
   }
@@ -217,7 +236,7 @@ function StatusIcon({
       <Check
         size={11}
         className="mt-0.5 shrink-0 text-emerald-400 light:text-emerald-700"
-        aria-label="completed"
+        aria-label={t("orchestration.todos.status.completed")}
       />
     );
   }
@@ -226,7 +245,7 @@ function StatusIcon({
       <X
         size={11}
         className="mt-0.5 shrink-0 text-neutral-500 light:text-neutral-500"
-        aria-label="deleted"
+        aria-label={t("orchestration.todos.status.deleted")}
       />
     );
   }
@@ -234,7 +253,7 @@ function StatusIcon({
     <Circle
       size={11}
       className="mt-0.5 shrink-0 text-neutral-500 light:text-neutral-500"
-      aria-label="pending"
+      aria-label={t("orchestration.todos.status.pending")}
     />
   );
 }

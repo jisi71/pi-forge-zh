@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { ChevronDown, ChevronRight, FileSearch, Loader2, Search } from "lucide-react";
 import { api, ApiError, type SearchMatch, type SearchResponse } from "../lib/api-client";
+import { useT } from "../i18n";
 import { useFileStore } from "../store/file-store";
 import { useActiveProject } from "../store/project-store";
 import { useUiStore } from "../store/ui-store";
@@ -16,6 +17,7 @@ const RESULT_LIMIT = 200;
  * matched line/column via the file-store's `pendingNav` plumbing.
  */
 export function SearchPanel() {
+  const t = useT();
   const project = useActiveProject();
   const openFile = useFileStore((s) => s.openFile);
   const openEditorPane = useUiStore((s) => s.openEditorPane);
@@ -67,18 +69,18 @@ export function SearchPanel() {
           return;
         }
         if (err instanceof ApiError && err.code === "invalid_response_body") {
-          setError("server returned an unexpected response");
+          setError(t("files.search.errorUnexpectedResponse"));
         } else if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError("search failed");
+          setError(t("files.search.errorFailed"));
         }
         setResults(undefined);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     },
-    [project, regex, caseSensitive, includeGitignored, include, exclude],
+    [project, regex, caseSensitive, includeGitignored, include, exclude, t],
   );
 
   // Debounced re-run on any input change. The debouncer also fires on
@@ -100,9 +102,7 @@ export function SearchPanel() {
 
   if (project === undefined) {
     return (
-      <div className="p-4 text-xs italic text-neutral-500">
-        Select a project to search its files.
-      </div>
+      <div className="p-4 text-xs italic text-neutral-500">{t("files.search.selectProject")}</div>
     );
   }
 
@@ -118,22 +118,26 @@ export function SearchPanel() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={regex ? "Regex…" : "Search project…"}
+            placeholder={regex ? t("files.search.placeholderRegex") : t("files.search.placeholder")}
             className="w-full rounded border border-neutral-700 bg-neutral-900 py-1.5 pl-7 pr-2 text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
             autoFocus
           />
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
-          <Toggle label="Regex" active={regex} onClick={() => setRegex((v) => !v)} />
+          <Toggle
+            label={t("files.search.regex")}
+            active={regex}
+            onClick={() => setRegex((v) => !v)}
+          />
           <Toggle
             label="Aa"
-            title="Case sensitive"
+            title={t("files.search.caseSensitive")}
             active={caseSensitive}
             onClick={() => setCaseSensitive((v) => !v)}
           />
           <Toggle
-            label="+ignored"
-            title="Include files that .gitignore would normally skip"
+            label={t("files.search.includeIgnored")}
+            title={t("files.search.includeIgnoredTitle")}
             active={includeGitignored}
             onClick={() => setIncludeGitignored((v) => !v)}
           />
@@ -142,7 +146,7 @@ export function SearchPanel() {
             className="ml-auto flex items-center gap-1 rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400 hover:border-neutral-500"
           >
             {globsOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-            Globs
+            {t("files.search.globs")}
           </button>
         </div>
         {globsOpen && (
@@ -151,14 +155,14 @@ export function SearchPanel() {
               type="text"
               value={include}
               onChange={(e) => setInclude(e.target.value)}
-              placeholder="include glob — e.g. **/*.ts"
+              placeholder={t("files.search.includeGlobPlaceholder")}
               className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
             <input
               type="text"
               value={exclude}
               onChange={(e) => setExclude(e.target.value)}
-              placeholder="exclude glob — e.g. **/dist/**"
+              placeholder={t("files.search.excludeGlobPlaceholder")}
               className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
           </div>
@@ -251,13 +255,14 @@ function SearchStatus({
   results: SearchResponse | undefined;
   totalFiles: number;
 }) {
+  const t = useT();
   if (query.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-xs text-neutral-500">
         <FileSearch size={20} className="text-neutral-700" />
-        <p>Type to search across project files.</p>
+        <p>{t("files.search.emptyHint")}</p>
         <p className="text-[10px] text-neutral-600">
-          Min {MIN_QUERY_LEN} chars · Click a result to jump to that line.
+          {t("files.search.emptySubHint", { min: MIN_QUERY_LEN })}
         </p>
       </div>
     );
@@ -265,14 +270,14 @@ function SearchStatus({
   if (query.length < MIN_QUERY_LEN) {
     return (
       <div className="px-4 py-3 text-xs italic text-neutral-500">
-        Keep typing — at least {MIN_QUERY_LEN} characters.
+        {t("files.search.keepTyping", { min: MIN_QUERY_LEN })}
       </div>
     );
   }
   if (loading && results === undefined) {
     return (
       <div className="flex items-center gap-2 px-4 py-3 text-xs text-neutral-400">
-        <Loader2 size={12} className="animate-spin" /> Searching…
+        <Loader2 size={12} className="animate-spin" /> {t("files.search.searching")}
       </div>
     );
   }
@@ -281,25 +286,28 @@ function SearchStatus({
   }
   if (results === undefined) return null;
   if (results.matches.length === 0) {
-    return <div className="px-4 py-3 text-xs italic text-neutral-500">No matches.</div>;
+    return (
+      <div className="px-4 py-3 text-xs italic text-neutral-500">{t("files.search.noMatches")}</div>
+    );
   }
   return (
     <div className="flex items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-950/60 px-3 py-1.5 text-[10px]">
       <span className="text-neutral-400">
-        {results.matches.length} match{results.matches.length === 1 ? "" : "es"} in {totalFiles}{" "}
-        file{totalFiles === 1 ? "" : "s"}
+        {t.plural("files.search.resultCount", results.matches.length, {
+          files: t.plural("common.fileCount", totalFiles),
+        })}
         {results.truncated && (
           <span className="ml-1 text-amber-400 light:text-amber-700">
-            · truncated at {RESULT_LIMIT}
+            {t("files.search.truncated", { limit: RESULT_LIMIT })}
           </span>
         )}
       </span>
       {results.engine === "node" && (
         <span
           className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800"
-          title="ripgrep was not found on this host — using the slower in-process fallback"
+          title={t("files.search.fallbackTitle")}
         >
-          fallback
+          {t("files.search.fallbackBadge")}
         </span>
       )}
     </div>

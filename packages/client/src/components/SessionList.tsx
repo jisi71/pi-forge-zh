@@ -9,6 +9,8 @@ import { ChevronDown, ChevronRight, LoaderCircle, X } from "lucide-react";
 import { EMPTY_SESSIONS, useSessionStore } from "../store/session-store";
 import { useProjectStore } from "../store/project-store";
 import { ConfirmDialog } from "./Modal";
+import { useT } from "../i18n";
+import { localizeSessionName } from "../lib/session-name";
 import type { UnifiedSession } from "../lib/api-client";
 
 interface Props {
@@ -23,6 +25,7 @@ interface Props {
  * read-only for the create path.
  */
 export function SessionList({ projectId }: Props) {
+  const t = useT();
   // EMPTY_SESSIONS (stable module-level reference) — see session-store.ts
   // for why we don't write `?? []` directly in Zustand selectors.
   const sessions = useSessionStore((s) => s.byProject[projectId] ?? EMPTY_SESSIONS);
@@ -312,23 +315,25 @@ export function SessionList({ projectId }: Props) {
           ProjectSidebar (the + button on hover). Avoids stacking
           a second action button per project. */}
       {sessions.length === 0 && (
-        <p className="px-2 py-1 text-xs italic text-neutral-600">No sessions yet.</p>
+        <p className="px-2 py-1 text-xs italic text-neutral-600">
+          {t("projects.sessionList.empty")}
+        </p>
       )}
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between gap-2 rounded bg-neutral-900/60 px-2 py-1 text-[11px] text-neutral-300">
-          <span>{selectedIds.size} selected</span>
+          <span>{t("projects.sessionList.selectedCount", { count: selectedIds.size })}</span>
           <div className="flex gap-1">
             <button
               onClick={() => setDeleteDialog({ sessionIds: Array.from(selectedIds) })}
               className="rounded border border-red-700/50 px-1.5 py-0.5 text-red-300 hover:bg-red-900/20 light:border-red-400 light:text-red-700 light:hover:bg-red-50"
             >
-              Delete
+              {t("common.delete")}
             </button>
             <button
               onClick={clearSelection}
               className="rounded border border-neutral-700 px-1.5 py-0.5 text-neutral-300 hover:border-neutral-500"
             >
-              Clear
+              {t("common.clear")}
             </button>
           </div>
         </div>
@@ -345,9 +350,12 @@ export function SessionList({ projectId }: Props) {
         open={deleteDialog !== undefined}
         onClose={() => setDeleteDialog(undefined)}
         onConfirm={() => void submitDelete()}
-        title={`Delete ${deleteDialog?.sessionIds.length ?? 0} session${(deleteDialog?.sessionIds.length ?? 0) === 1 ? "" : "s"}`}
-        message={`Delete the ${deleteDialog?.sessionIds.length ?? 0} selected session${(deleteDialog?.sessionIds.length ?? 0) === 1 ? "" : "s"}? Live sessions are killed and on-disk JSONLs are removed. Cannot be undone.`}
-        primaryLabel="Delete all"
+        title={t.plural("projects.sessionList.deleteTitle", deleteDialog?.sessionIds.length ?? 0)}
+        message={t.plural(
+          "projects.sessionList.deleteMessage",
+          deleteDialog?.sessionIds.length ?? 0,
+        )}
+        primaryLabel={t("projects.sessionList.deleteAll")}
         tone="danger"
       />
     </div>
@@ -403,11 +411,16 @@ function SessionRow(props: SessionRowProps) {
     isArmedForDelete,
     onDeleteClick,
   } = props;
+  const t = useT();
+  // `name` stays raw so the inline rename editor edits the stored value;
+  // only the rendered label maps the SDK's generic default to localized copy.
+  const name = s.name;
   const label =
-    s.name ??
-    (s.firstMessage.length > 0
-      ? s.firstMessage.slice(0, 40)
-      : `session ${s.sessionId.slice(0, 6)}`);
+    name !== undefined
+      ? localizeSessionName(name, t)
+      : s.firstMessage.length > 0
+        ? s.firstMessage.slice(0, 40)
+        : t("projects.sessionRow.untitled", { id: s.sessionId.slice(0, 6) });
   return (
     <div
       // Multiselect styling matches the file-tree's selection cue:
@@ -432,8 +445,12 @@ function SessionRow(props: SessionRowProps) {
         <button
           onClick={() => onToggleExpanded(s.sessionId, isExpanded)}
           className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-200"
-          title={`${childCount} child/worker session${childCount === 1 ? "" : "s"}`}
-          aria-label={isExpanded ? "Collapse child sessions" : "Expand child sessions"}
+          title={t.plural("projects.sessionRow.childSessions", childCount)}
+          aria-label={
+            isExpanded
+              ? t("projects.sessionRow.collapseChildren")
+              : t("projects.sessionRow.expandChildren")
+          }
         >
           {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -444,14 +461,14 @@ function SessionRow(props: SessionRowProps) {
         <LoaderCircle
           size={12}
           className="shrink-0 animate-spin text-cyan-400"
-          aria-label="Agent is working"
+          aria-label={t("projects.sessionRow.agentWorking")}
         />
       ) : hasUnreadResponse ? (
         <span
           className="forge-session-unread h-2 w-2 shrink-0 rounded-full bg-amber-400"
           role="status"
-          aria-label="New response"
-          title="New response"
+          aria-label={t("projects.sessionRow.newResponse")}
+          title={t("projects.sessionRow.newResponse")}
         />
       ) : (
         <span className="inline-block h-3 w-3 shrink-0" aria-hidden="true" />
@@ -477,14 +494,14 @@ function SessionRow(props: SessionRowProps) {
             }
             onSelect(s.sessionId);
           }}
-          onDoubleClick={() => onStartRename(s.sessionId, label)}
+          onDoubleClick={() => onStartRename(s.sessionId, name ?? label)}
           className="flex-1 truncate text-left"
-          title={`${s.sessionId} — double-click to rename, Cmd/Ctrl+click to select for bulk delete`}
+          title={t("projects.sessionRow.rowTitle", { id: s.sessionId })}
         >
           {depth > 0 && (
             <span
               className="mr-1 text-purple-400 light:text-purple-700"
-              title="child/worker session"
+              title={t("projects.sessionRow.childMarker")}
             >
               ↳
             </span>
@@ -517,14 +534,18 @@ function SessionRow(props: SessionRowProps) {
           }
           title={
             isArmedForDelete
-              ? "Click again to delete (Esc to cancel)"
+              ? t("projects.sessionRow.deleteArmedTitle")
               : s.isLive
-                ? "Delete session — also kills the live shell"
-                : "Delete session JSONL from disk"
+                ? t("projects.sessionRow.deleteLiveTitle")
+                : t("projects.sessionRow.deleteDiskTitle")
           }
-          aria-label={isArmedForDelete ? "Confirm delete" : "Delete session"}
+          aria-label={
+            isArmedForDelete
+              ? t("projects.sessionRow.confirmDelete")
+              : t("projects.sessionRow.deleteSession")
+          }
         >
-          {isArmedForDelete ? "Confirm" : <X size={16} />}
+          {isArmedForDelete ? t("projects.sessionRow.confirm") : <X size={16} />}
         </button>
       )}
     </div>

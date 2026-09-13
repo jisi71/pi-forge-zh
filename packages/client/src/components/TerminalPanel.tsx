@@ -9,6 +9,7 @@ import { useActiveProject, useProjectStore } from "../store/project-store";
 import { getStoredToken } from "../lib/auth-client";
 import { appUrl } from "../lib/base-path";
 import { readCssVar, useThemeStore } from "../lib/theme";
+import { t as translate, useT } from "../i18n";
 
 /**
  * Per-tab DOM/WebSocket/xterm bag. Lives OUTSIDE React state because
@@ -228,6 +229,7 @@ function isTerminalCloseCode(code: number): boolean {
  * via the picker).
  */
 export function TerminalPanel() {
+  const t = useT();
   const project = useActiveProject();
   const tabs = useTerminalStore((s) => s.tabs);
   const activeTabId = useTerminalStore((s) => s.activeTabId);
@@ -235,8 +237,8 @@ export function TerminalPanel() {
   const closeTab = useTerminalStore((s) => s.closeTab);
   const setActiveTab = useTerminalStore((s) => s.setActiveTab);
   const projects = useProjectStore((s) => s.projects);
-  const projectTabs = tabs.filter((t) => t.projectId === project?.id);
-  const activeTab = projectTabs.find((t) => t.id === activeTabId) ?? projectTabs[0];
+  const projectTabs = tabs.filter((tab) => tab.projectId === project?.id);
+  const activeTab = projectTabs.find((tab) => tab.id === activeTabId) ?? projectTabs[0];
 
   // Project-path lookup for cross-project tabs. We keep TerminalHost
   // components mounted for tabs in ALL projects (see render block
@@ -255,7 +257,7 @@ export function TerminalPanel() {
   if (project === undefined) {
     return (
       <div className="flex h-full items-center justify-center text-xs italic text-neutral-500">
-        Select a project to open a terminal.
+        {t("terminal.panel.selectProject")}
       </div>
     );
   }
@@ -274,27 +276,29 @@ export function TerminalPanel() {
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900/40 px-2 py-1">
         <div className="flex items-center gap-1 overflow-x-auto">
           {projectTabs.length === 0 && (
-            <span className="px-2 text-[11px] italic text-neutral-500">No terminals open.</span>
+            <span className="px-2 text-[11px] italic text-neutral-500">
+              {t("terminal.panel.noTerminals")}
+            </span>
           )}
-          {projectTabs.map((t) => {
-            const isActive = t.id === activeTab?.id;
+          {projectTabs.map((tab) => {
+            const isActive = tab.id === activeTab?.id;
             return (
               <div
-                key={t.id}
+                key={tab.id}
                 className={`group flex items-center gap-1 rounded px-2 py-0.5 text-xs ${
                   isActive
                     ? "bg-neutral-800 text-neutral-100"
                     : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200"
                 }`}
               >
-                <button onClick={() => setActiveTab(t.id)} className="flex items-center gap-1">
+                <button onClick={() => setActiveTab(tab.id)} className="flex items-center gap-1">
                   <TerminalIcon size={11} />
-                  {t.label}
+                  {tab.label}
                 </button>
                 <button
-                  onClick={() => onCloseTab(t.id)}
+                  onClick={() => onCloseTab(tab.id)}
                   className="rounded p-1 text-neutral-600 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="Close terminal (kills the PTY)"
+                  title={t("terminal.panel.closeTabTooltip")}
                 >
                   <X size={16} />
                 </button>
@@ -304,10 +308,10 @@ export function TerminalPanel() {
           <button
             onClick={onNewTab}
             className="ml-1 flex items-center gap-1 rounded px-2 py-0.5 text-xs text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200 light:text-neutral-200 light:hover:bg-neutral-800 light:hover:text-neutral-50"
-            title="New terminal"
+            title={t("terminal.panel.newTabTooltip")}
           >
             <Plus size={14} />
-            New
+            {t("terminal.panel.newTab")}
           </button>
         </div>
       </div>
@@ -322,15 +326,15 @@ export function TerminalPanel() {
       <div className="relative flex-1 overflow-hidden">
         {projectTabs.length === 0 && (
           <div className="flex h-full items-center justify-center text-xs italic text-neutral-500">
-            Click "New" to open a terminal in {project.path}.
+            {t("terminal.panel.newTabHint", { path: project.path })}
           </div>
         )}
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <TerminalHost
-            key={t.id}
-            tab={t}
-            projectPath={projectPathById.get(t.projectId) ?? ""}
-            visible={t.projectId === project.id && t.id === activeTab?.id}
+            key={tab.id}
+            tab={tab}
+            projectPath={projectPathById.get(tab.projectId) ?? ""}
+            visible={tab.projectId === project.id && tab.id === activeTab?.id}
           />
         ))}
       </div>
@@ -675,12 +679,11 @@ function attachWebSocket(
     if (isTerminalCloseCode(e.code)) {
       // Custom messages for the specific terminal codes — without
       // these the user sees a bare numeric code with no clear path.
-      let msg = `[connection closed: ${String(e.code)}]`;
+      let msg = translate("terminal.notices.closed", { code: e.code });
       if (e.code === 4401) {
-        msg =
-          "[connection closed (4401): your session expired — refresh the page after logging back in]";
+        msg = translate("terminal.notices.closedAuth");
       } else if (e.code === 4404) {
-        msg = "[connection closed (4404): project no longer exists]";
+        msg = translate("terminal.notices.closedProjectGone");
       }
       term.write(`\r\n${msg}\r\n`);
       return;
@@ -692,7 +695,11 @@ function attachWebSocket(
     entry.reconnectAttempt = attempt;
     const delay = reconnectDelayMs(attempt);
     term.write(
-      `\r\n[connection lost (${String(e.code)}) — reconnecting in ${String(delay / 1000)}s, attempt ${String(attempt)}]\r\n`,
+      `\r\n${translate("terminal.notices.reconnecting", {
+        code: e.code,
+        seconds: delay / 1000,
+        attempt,
+      })}\r\n`,
     );
     entry.reconnectTimer = setTimeout(() => {
       const cur = live.get(tabId);

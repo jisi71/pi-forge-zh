@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Share, X } from "lucide-react";
 import { useIsMobile } from "../lib/use-is-mobile";
 import { useUiConfigStore } from "../store/ui-config-store";
+import { useT } from "../i18n";
 
 /**
  * "Install pi-forge as an app" banner — shown on mobile, dismissable,
@@ -52,6 +53,7 @@ function isIOS(): boolean {
 }
 
 export function InstallPrompt(): React.JSX.Element | null {
+  const t = useT();
   const isMobile = useIsMobile();
   const appName = useUiConfigStore((s) => s.appName);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | undefined>(undefined);
@@ -113,11 +115,14 @@ export function InstallPrompt(): React.JSX.Element | null {
       <div className="mx-auto flex max-w-3xl items-center gap-2">
         <div className="min-w-0 flex-1">
           {deferred !== undefined ? (
-            <span>Install {appName} as an app for a fullscreen experience.</span>
+            <span>{t("app.installPrompt.banner", { appName })}</span>
           ) : (
             <span className="inline-flex flex-wrap items-center gap-1">
-              Install: tap <Share size={14} className="inline shrink-0 text-neutral-400" /> Share,
-              then <span className="font-medium">Add to Home Screen</span>.
+              {t("app.installPrompt.iosPrefix")}
+              <Share size={14} className="inline shrink-0 text-neutral-400" />
+              {t("app.installPrompt.iosMiddle")}
+              <span className="font-medium">{t("app.installPrompt.addToHomeScreen")}</span>
+              {t("app.installPrompt.iosSuffix")}
             </span>
           )}
         </div>
@@ -127,13 +132,13 @@ export function InstallPrompt(): React.JSX.Element | null {
             onClick={() => void onInstall()}
             className="shrink-0 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-200"
           >
-            Install
+            {t("common.install")}
           </button>
         )}
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Dismiss install prompt"
+          aria-label={t("app.installPrompt.dismissAria")}
           className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
         >
           <X size={16} />

@@ -21,18 +21,20 @@ import {
   type WebhookScope,
 } from "../lib/api-client";
 import { useProjectStore } from "../store/project-store";
+import { useT, type TranslateKey } from "../i18n";
 
 /** Human-readable label for an event. The bare event name is also
  *  shown in monospace next to it so consumers searching for the
- *  exact string can find it. */
-const EVENT_LABELS: Record<WebhookEvent, string> = {
-  agent_end: "Agent turn finished",
-  ask_user_question: "Agent asked a question (waiting on user)",
-  process_alert: "Background process exited",
-  auto_retry_end: "Auto-retry exhausted (provider failure)",
-  compaction_end: "Context compaction completed",
-  session_created: "Session created",
-  session_deleted: "Session deleted",
+ *  exact string can find it. Values are locale keys — resolve them
+ *  with `t()` at render time. */
+const EVENT_LABELS: Record<WebhookEvent, TranslateKey> = {
+  agent_end: "webhooks.events.agentEnd",
+  ask_user_question: "webhooks.events.askUserQuestion",
+  process_alert: "webhooks.events.processAlert",
+  auto_retry_end: "webhooks.events.autoRetryEnd",
+  compaction_end: "webhooks.events.compactionEnd",
+  session_created: "webhooks.events.sessionCreated",
+  session_deleted: "webhooks.events.sessionDeleted",
 };
 
 interface DraftWebhook {
@@ -106,6 +108,7 @@ function parseHeaders(text: string): Record<string, string> | undefined {
 }
 
 export function WebhooksTab({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const projects = useProjectStore((s) => s.projects);
   const [webhooks, setWebhooks] = useState<WebhookConfigWire[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,16 +219,16 @@ export function WebhooksTab({ onError }: { onError: (msg: string | undefined) =>
   };
 
   if (loading) {
-    return <p className="px-4 py-6 text-sm text-neutral-400">Loading…</p>;
+    return <p className="px-4 py-6 text-sm text-neutral-400">{t("common.loading")}</p>;
   }
 
   return (
     <div className="space-y-3 px-4 py-3">
       <header className="flex items-center justify-between">
         <p className="text-sm text-neutral-400">
-          Webhooks fire HTTP POSTs to URLs you configure when agent or session events happen. Useful
-          for Slack notifications, CI integrations, audit logs, etc. Stored at{" "}
-          <code className="font-mono text-xs">$FORGE_DATA_DIR/webhooks.json</code>.
+          {t("webhooks.introPrefix")}{" "}
+          <code className="font-mono text-xs">$FORGE_DATA_DIR/webhooks.json</code>
+          {t("webhooks.introSuffix")}
         </p>
         {draft === undefined && (
           <button
@@ -233,7 +236,7 @@ export function WebhooksTab({ onError }: { onError: (msg: string | undefined) =>
             onClick={() => setDraft(emptyDraft())}
             className="shrink-0 rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900"
           >
-            + New webhook
+            {t("webhooks.newWebhook")}
           </button>
         )}
       </header>
@@ -251,7 +254,7 @@ export function WebhooksTab({ onError }: { onError: (msg: string | undefined) =>
 
       {webhooks.length === 0 ? (
         <p className="rounded border border-dashed border-neutral-700 px-4 py-6 text-center text-sm italic text-neutral-500">
-          No webhooks configured.
+          {t("webhooks.empty")}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -293,6 +296,7 @@ function DraftForm({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const t = useT();
   const isEdit = draft.id !== undefined;
   const update = (patch: Partial<DraftWebhook>): void => onChange({ ...draft, ...patch });
   const toggleEvent = (event: WebhookEvent): void => {
@@ -304,12 +308,12 @@ function DraftForm({
   return (
     <div className="space-y-3 rounded-md border border-neutral-700 bg-neutral-950 p-3">
       <header className="text-xs uppercase tracking-wider text-neutral-400">
-        {isEdit ? "Edit webhook" : "New webhook"}
+        {isEdit ? t("webhooks.draft.editTitle") : t("webhooks.draft.newTitle")}
       </header>
 
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
-          <span className="text-xs text-neutral-300">Name</span>
+          <span className="text-xs text-neutral-300">{t("common.name")}</span>
           <input
             value={draft.name}
             onChange={(e) => update({ name: e.target.value })}
@@ -319,7 +323,7 @@ function DraftForm({
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-xs text-neutral-300">URL (HTTPS only)</span>
+          <span className="text-xs text-neutral-300">{t("webhooks.draft.urlLabel")}</span>
           <input
             value={draft.url}
             onChange={(e) => update({ url: e.target.value })}
@@ -331,7 +335,7 @@ function DraftForm({
       </div>
 
       <fieldset className="space-y-1">
-        <legend className="text-xs text-neutral-300">Events</legend>
+        <legend className="text-xs text-neutral-300">{t("webhooks.draft.eventsLegend")}</legend>
         <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
           {WEBHOOK_EVENTS.map((event) => (
             <label
@@ -346,7 +350,7 @@ function DraftForm({
                 className="mt-0.5"
               />
               <span className="flex flex-col text-[11px]">
-                <span className="text-neutral-200">{EVENT_LABELS[event]}</span>
+                <span className="text-neutral-200">{t(EVENT_LABELS[event])}</span>
                 <code className="font-mono text-[10px] text-neutral-500">{event}</code>
               </span>
             </label>
@@ -355,7 +359,7 @@ function DraftForm({
       </fieldset>
 
       <fieldset className="space-y-1">
-        <legend className="text-xs text-neutral-300">Scope</legend>
+        <legend className="text-xs text-neutral-300">{t("webhooks.draft.scopeLegend")}</legend>
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <label className="flex items-center gap-1">
             <input
@@ -364,7 +368,7 @@ function DraftForm({
               onChange={() => update({ scope: { kind: "global" } })}
               disabled={submitting}
             />
-            <span>Global (every project)</span>
+            <span>{t("webhooks.draft.scopeGlobal")}</span>
           </label>
           <label className="flex items-center gap-1">
             <input
@@ -377,7 +381,7 @@ function DraftForm({
               }
               disabled={submitting || projects.length === 0}
             />
-            <span>Specific project:</span>
+            <span>{t("webhooks.draft.scopeProject")}</span>
             <select
               value={draft.scope.kind === "project" ? draft.scope.projectId : ""}
               onChange={(e) => update({ scope: { kind: "project", projectId: e.target.value } })}
@@ -396,16 +400,18 @@ function DraftForm({
 
       <label className="block space-y-1">
         <span className="text-xs text-neutral-300">
-          HMAC secret (optional){" "}
-          {isEdit && (
-            <span className="text-neutral-500">— leave blank to keep the existing secret</span>
-          )}
+          {t("webhooks.draft.secretLabel")}
+          {isEdit && <span className="text-neutral-500">{t("webhooks.draft.secretKeepHint")}</span>}
         </span>
         <input
           type="password"
           value={draft.secret}
           onChange={(e) => update({ secret: e.target.value })}
-          placeholder={isEdit ? "(unchanged)" : "shared secret for X-Pi-Forge-Signature"}
+          placeholder={
+            isEdit
+              ? t("webhooks.draft.secretPlaceholderUnchanged")
+              : t("webhooks.draft.secretPlaceholder")
+          }
           disabled={submitting}
           className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 font-mono text-xs outline-none focus:border-neutral-500"
         />
@@ -413,7 +419,8 @@ function DraftForm({
 
       <label className="block space-y-1">
         <span className="text-xs text-neutral-300">
-          Custom headers (optional, one per line, <code>Name: value</code>)
+          {t("webhooks.draft.headersLabelPrefix")} <code>Name: value</code>
+          {t("webhooks.draft.headersLabelSuffix")}
         </span>
         <textarea
           rows={3}
@@ -425,9 +432,9 @@ function DraftForm({
         />
         {isEdit && (
           <span className="block text-[11px] text-neutral-500">
-            Stored values are masked as <code className="font-mono">***REDACTED***</code> for
-            safety. Leave any line with the sentinel intact to keep the original value; replace it
-            to update; delete the line to remove the header.
+            {t("webhooks.draft.headersMaskedPrefix")}{" "}
+            <code className="font-mono">***REDACTED***</code>
+            {t("webhooks.draft.headersMaskedSuffix")}
           </span>
         )}
       </label>
@@ -442,12 +449,11 @@ function DraftForm({
         />
         <span>
           <span className="text-amber-200 light:text-amber-800">
-            Allow self-signed / invalid TLS certificate
+            {t("webhooks.draft.insecureTlsLabel")}
           </span>
           <br />
           <span className="text-[11px] text-amber-300/70 light:text-amber-700/80">
-            ⚠ Disables MITM protection. Use only for internal hosts with known self-signed certs.
-            Every fire logs to stderr so the relaxed security is visible in operator logs.
+            {t("webhooks.draft.insecureTlsHint")}
           </span>
         </span>
       </label>
@@ -459,7 +465,7 @@ function DraftForm({
           onChange={(e) => update({ enabled: e.target.checked })}
           disabled={submitting}
         />
-        <span>Enabled (disable to pause without losing config)</span>
+        <span>{t("webhooks.draft.enabledLabel")}</span>
       </label>
 
       <footer className="flex justify-end gap-2 pt-1">
@@ -469,7 +475,7 @@ function DraftForm({
           disabled={submitting}
           className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -477,7 +483,11 @@ function DraftForm({
           disabled={submitting}
           className="rounded bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-900 disabled:opacity-50"
         >
-          {submitting ? "Saving…" : isEdit ? "Save changes" : "Create webhook"}
+          {submitting
+            ? t("common.saving")
+            : isEdit
+              ? t("webhooks.draft.saveChanges")
+              : t("webhooks.draft.createWebhook")}
         </button>
       </footer>
     </div>
@@ -507,10 +517,18 @@ function WebhookRow({
   onTest: () => void;
   onToggleDeliveries: () => void;
 }) {
+  const t = useT();
   const scopeLabel =
     webhook.scope.kind === "global"
-      ? "Global"
-      : `Project: ${projects.find((p) => p.id === webhook.scope.kind && p.id === (webhook.scope as { projectId: string }).projectId)?.name ?? (webhook.scope as { projectId: string }).projectId}`;
+      ? t("webhooks.row.scopeGlobal")
+      : t("webhooks.row.scopeProject", {
+          name:
+            projects.find(
+              (p) =>
+                p.id === webhook.scope.kind &&
+                p.id === (webhook.scope as { projectId: string }).projectId,
+            )?.name ?? (webhook.scope as { projectId: string }).projectId,
+        });
   return (
     <li
       className={`rounded-md border ${
@@ -522,7 +540,9 @@ function WebhookRow({
           type="button"
           onClick={onToggleDeliveries}
           className="mt-0.5 text-neutral-500 hover:text-neutral-300"
-          aria-label={isExpanded ? "Hide deliveries" : "Show recent deliveries"}
+          aria-label={
+            isExpanded ? t("webhooks.row.hideDeliveries") : t("webhooks.row.showDeliveries")
+          }
         >
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -536,22 +556,22 @@ function WebhookRow({
                   : "bg-neutral-800 text-neutral-400"
               }`}
             >
-              {webhook.enabled ? "enabled" : "disabled"}
+              {webhook.enabled ? t("common.enabled") : t("common.disabled")}
             </span>
             <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-300">
               {scopeLabel}
             </span>
             {webhook.hasSecret && (
               <span className="rounded bg-sky-900/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-sky-300">
-                signed
+                {t("webhooks.row.signedBadge")}
               </span>
             )}
             {webhook.insecureTls === true && (
               <span
                 className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-300"
-                title="TLS cert validation disabled for this webhook"
+                title={t("webhooks.row.insecureTlsBadgeTooltip")}
               >
-                insecure TLS
+                {t("webhooks.row.insecureTlsBadge")}
               </span>
             )}
           </div>
@@ -567,17 +587,17 @@ function WebhookRow({
             type="button"
             onClick={onTest}
             className="rounded border border-neutral-700 px-2 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800"
-            title="Fire a synthetic webhook.test event at this webhook"
+            title={t("webhooks.row.testTooltip")}
           >
             <Send size={12} className="mr-1 inline" />
-            Test
+            {t("webhooks.row.testButton")}
           </button>
           <button
             type="button"
             onClick={onEdit}
             className="rounded border border-neutral-700 px-2 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800"
           >
-            Edit
+            {t("common.edit")}
           </button>
           {isPendingDelete ? (
             <>
@@ -586,14 +606,14 @@ function WebhookRow({
                 onClick={onConfirmDelete}
                 className="rounded bg-red-700 px-2 py-1 text-[11px] font-medium text-red-50"
               >
-                Confirm
+                {t("common.confirm")}
               </button>
               <button
                 type="button"
                 onClick={onCancelDelete}
                 className="rounded border border-neutral-700 px-2 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </>
           ) : (
@@ -601,8 +621,8 @@ function WebhookRow({
               type="button"
               onClick={onArmDelete}
               className="rounded border border-neutral-700 px-2 py-1 text-[11px] text-red-300 hover:bg-red-900/40"
-              title="Delete this webhook"
-              aria-label="Delete this webhook"
+              title={t("webhooks.row.deleteTooltip")}
+              aria-label={t("webhooks.row.deleteTooltip")}
             >
               <Trash2 size={12} />
             </button>
@@ -615,6 +635,7 @@ function WebhookRow({
 }
 
 function Deliveries({ webhookId }: { webhookId: string }) {
+  const t = useT();
   const [items, setItems] = useState<WebhookDelivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | undefined>();
@@ -645,20 +666,22 @@ function Deliveries({ webhookId }: { webhookId: string }) {
     <div className="border-t border-neutral-800 bg-neutral-950 px-3 py-2">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-[11px] uppercase tracking-wider text-neutral-500">
-          Recent deliveries {items.length > 0 && `(${items.length})`}
+          {items.length > 0
+            ? t("webhooks.deliveries.titleWithCount", { count: items.length })
+            : t("webhooks.deliveries.title")}
         </span>
         <button
           type="button"
           onClick={() => void reload()}
           className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-300 hover:bg-neutral-800"
         >
-          Refresh
+          {t("common.refresh")}
         </button>
       </div>
-      {loading && <p className="text-xs text-neutral-500">Loading…</p>}
+      {loading && <p className="text-xs text-neutral-500">{t("common.loading")}</p>}
       {err !== undefined && <p className="text-xs text-red-400">{err}</p>}
       {!loading && err === undefined && items.length === 0 && (
-        <p className="text-xs italic text-neutral-500">No deliveries yet.</p>
+        <p className="text-xs italic text-neutral-500">{t("webhooks.deliveries.empty")}</p>
       )}
       {items.length > 0 && (
         <ul className="space-y-1">

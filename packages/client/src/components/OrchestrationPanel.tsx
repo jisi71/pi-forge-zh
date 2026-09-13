@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Users, X } from "lucide-react";
+import { useT, type TranslateKey } from "../i18n";
 import {
   api,
   ApiError,
@@ -35,7 +36,24 @@ interface Props {
  * The supervisor's worker list polls every 4s while the panel is
  * mounted. Idle UI overhead is small — one cheap HTTP call.
  */
+/**
+ * Role / live-state badge copy, keyed by the raw discriminator so the
+ * localized label never feeds the `===` checks that pick the styling.
+ */
+const ROLE_LABEL_KEYS: Record<"supervisor" | "worker" | "standalone", TranslateKey> = {
+  supervisor: "orchestration.panel.roles.supervisor",
+  worker: "orchestration.panel.roles.worker",
+  standalone: "orchestration.panel.roles.standalone",
+};
+
+const STATE_LABEL_KEYS: Record<"streaming" | "idle" | "cold", TranslateKey> = {
+  streaming: "orchestration.workerState.streaming",
+  idle: "orchestration.workerState.idle",
+  cold: "orchestration.workerState.cold",
+};
+
 export function OrchestrationPanel({ sessionId, onClose }: Props) {
+  const t = useT();
   const orchestrationEnabled = useUiConfigStore((s) => s.orchestrationEnabled);
   const [link, setLink] = useState<SessionLink | undefined>(undefined);
   const [workers, setWorkers] = useState<WorkerSummary[]>([]);
@@ -73,10 +91,10 @@ export function OrchestrationPanel({ sessionId, onClose }: Props) {
     // Poll for live worker state. 4s — fast enough to feel live,
     // slow enough not to spam the server. Aligns with the cadence
     // the webhooks deliveries panel uses.
-    const t = setInterval(() => {
+    const interval = setInterval(() => {
       void reload();
     }, 4_000);
-    return () => clearInterval(t);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchestrationEnabled, sessionId]);
 
@@ -89,7 +107,7 @@ export function OrchestrationPanel({ sessionId, onClose }: Props) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 font-medium">
           <Users size={14} />
-          <span>Orchestration</span>
+          <span>{t("orchestration.panel.title")}</span>
           <RoleBadge role={role} />
         </div>
         <div className="flex items-center gap-1">
@@ -98,7 +116,7 @@ export function OrchestrationPanel({ sessionId, onClose }: Props) {
             onClick={() => {
               void reload();
             }}
-            title="Refresh"
+            title={t("common.refresh")}
             className="p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -107,7 +125,7 @@ export function OrchestrationPanel({ sessionId, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              title="Close"
+              title={t("common.close")}
               className="p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
             >
               <X size={14} />
@@ -150,6 +168,7 @@ export function OrchestrationPanel({ sessionId, onClose }: Props) {
 }
 
 function RoleBadge({ role }: { role: "supervisor" | "worker" | "standalone" }) {
+  const t = useT();
   const styles =
     role === "supervisor"
       ? "bg-violet-900/40 text-violet-200 light:bg-violet-100 light:text-violet-800"
@@ -158,7 +177,7 @@ function RoleBadge({ role }: { role: "supervisor" | "worker" | "standalone" }) {
         : "bg-neutral-800 text-neutral-300";
   return (
     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${styles}`}>
-      {role === "supervisor" ? "Supervisor" : role === "worker" ? "Worker" : "Standalone"}
+      {t(ROLE_LABEL_KEYS[role])}
     </span>
   );
 }
@@ -176,6 +195,7 @@ function StandaloneControls({
   setError: (s: string | undefined) => void;
   onAfter: () => Promise<void>;
 }) {
+  const t = useT();
   const onEnable = async (): Promise<void> => {
     setBusy(true);
     setError(undefined);
@@ -196,9 +216,9 @@ function StandaloneControls({
   return (
     <div className="mt-2 space-y-2">
       <p className="text-xs text-neutral-400">
-        This session is standalone. Enable supervisor mode to give this session the{" "}
-        <code className="text-xs">orchestrate_*</code> tools — letting it spawn, observe, and
-        coordinate other worker sessions in the same project.
+        {t("orchestration.standalone.descriptionPrefix")}
+        <code className="text-xs">orchestrate_*</code>
+        {t("orchestration.standalone.descriptionSuffix")}
       </p>
       <button
         type="button"
@@ -208,10 +228,10 @@ function StandaloneControls({
         disabled={busy}
         className="rounded bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-70"
       >
-        {busy ? "Enabling…" : "Enable supervisor mode"}
+        {busy ? t("orchestration.standalone.enabling") : t("orchestration.standalone.enable")}
       </button>
       <p className="text-[11px] text-neutral-400">
-        The agent's tool list refreshes immediately — no reload needed.
+        {t("orchestration.standalone.toolListRefreshed")}
       </p>
     </div>
   );
@@ -238,10 +258,11 @@ function SupervisorControls({
   setError: (s: string | undefined) => void;
   onAfter: () => Promise<void>;
 }) {
+  const t = useT();
   const openSession = useSessionStore((s) => s.setActiveSession);
 
   const onDisable = async (): Promise<void> => {
-    if (!confirm("Disable supervisor mode? Linked workers become standalone sessions.")) return;
+    if (!confirm(t("orchestration.supervisor.disableConfirm"))) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -271,7 +292,7 @@ function SupervisorControls({
   };
 
   const onKill = async (workerId: string): Promise<void> => {
-    if (!confirm(`Kill worker ${workerId.slice(0, 8)}? (Transcript stays on disk.)`)) return;
+    if (!confirm(t("orchestration.supervisor.killConfirm", { id: workerId.slice(0, 8) }))) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -303,7 +324,7 @@ function SupervisorControls({
   };
 
   const onClearInbox = async (): Promise<void> => {
-    if (!confirm("Clear worker event history?")) return;
+    if (!confirm(t("orchestration.supervisor.clearInboxConfirm"))) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -320,7 +341,7 @@ function SupervisorControls({
     <div className="mt-2 space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-xs text-neutral-400">
-          {workers.length} worker{workers.length === 1 ? "" : "s"}
+          {t.plural("orchestration.supervisor.workerCount", workers.length)}
         </div>
         <button
           type="button"
@@ -330,13 +351,14 @@ function SupervisorControls({
           disabled={busy}
           className="rounded px-1.5 py-0.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-red-400 disabled:opacity-70 light:hover:text-red-600"
         >
-          Disable supervisor mode
+          {t("orchestration.supervisor.disable")}
         </button>
       </div>
       {workers.length === 0 ? (
         <p className="text-xs italic text-neutral-400">
-          No workers yet. The agent can spawn one with{" "}
-          <code className="text-xs">orchestrate_spawn_worker</code>.
+          {t("orchestration.supervisor.emptyPrefix")}
+          <code className="text-xs">orchestrate_spawn_worker</code>
+          {t("orchestration.supervisor.emptySuffix")}
         </p>
       ) : (
         <ul className="divide-y divide-neutral-800 rounded border border-neutral-800 bg-neutral-950">
@@ -351,7 +373,9 @@ function SupervisorControls({
               >
                 <span className="font-medium">{w.name ?? w.workerId.slice(0, 8)}</span>
                 {w.messageCount !== undefined && (
-                  <span className="ml-1 text-neutral-400">({w.messageCount} msgs)</span>
+                  <span className="ml-1 text-neutral-400">
+                    {t("orchestration.supervisor.messageCount", { count: w.messageCount })}
+                  </span>
                 )}
               </button>
               <div className="flex items-center gap-1">
@@ -364,7 +388,7 @@ function SupervisorControls({
                     disabled={busy}
                     className="px-1 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-800 hover:text-violet-300 disabled:opacity-70 light:hover:text-violet-700"
                   >
-                    Resume
+                    {t("orchestration.supervisor.resume")}
                   </button>
                 )}
                 <button
@@ -374,9 +398,9 @@ function SupervisorControls({
                   }}
                   disabled={busy}
                   className="px-1 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-800 hover:text-amber-300 disabled:opacity-70 light:hover:text-amber-700"
-                  title="Detach (worker continues as standalone)"
+                  title={t("orchestration.supervisor.detachTooltip")}
                 >
-                  Detach
+                  {t("orchestration.supervisor.detach")}
                 </button>
                 <button
                   type="button"
@@ -385,9 +409,9 @@ function SupervisorControls({
                   }}
                   disabled={busy}
                   className="px-1 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-800 hover:text-red-300 disabled:opacity-70 light:hover:text-red-700"
-                  title="Kill (dispose live session; transcript stays on disk)"
+                  title={t("orchestration.supervisor.killTooltip")}
                 >
-                  Kill
+                  {t("orchestration.supervisor.kill")}
                 </button>
               </div>
             </li>
@@ -397,10 +421,12 @@ function SupervisorControls({
 
       <details open={showInbox} onToggle={(e) => setShowInbox(e.currentTarget.open)}>
         <summary className="cursor-pointer select-none text-xs text-neutral-400">
-          Worker event history ({inbox.length})
+          {t("orchestration.supervisor.eventHistory", { count: inbox.length })}
         </summary>
         {inbox.length === 0 ? (
-          <p className="mt-1 text-xs italic text-neutral-400">No worker events.</p>
+          <p className="mt-1 text-xs italic text-neutral-400">
+            {t("orchestration.supervisor.noEvents")}
+          </p>
         ) : (
           <div className="mt-1 space-y-1">
             <ul className="max-h-48 divide-y divide-neutral-800 overflow-auto rounded border border-neutral-800 bg-neutral-950">
@@ -416,7 +442,7 @@ function SupervisorControls({
               disabled={busy}
               className="text-[11px] text-neutral-400 hover:text-red-400 disabled:opacity-70 light:hover:text-red-600"
             >
-              Clear event history
+              {t("orchestration.supervisor.clearHistory")}
             </button>
           </div>
         )}
@@ -426,6 +452,7 @@ function SupervisorControls({
 }
 
 function InboxRow({ item }: { item: InboxItemWire }) {
+  const t = useT();
   const label = inboxTypeLabel(item.type);
   return (
     <li className="flex items-baseline gap-2 px-2 py-1 text-xs">
@@ -436,7 +463,7 @@ function InboxRow({ item }: { item: InboxItemWire }) {
             : "bg-amber-700/40 text-amber-200 light:bg-amber-200 light:text-amber-900"
         }`}
       >
-        {label}
+        {t(label)}
       </span>
       <span className="font-mono text-neutral-400" title={item.workerId}>
         {item.workerId.slice(0, 8)}
@@ -448,30 +475,31 @@ function InboxRow({ item }: { item: InboxItemWire }) {
   );
 }
 
-function inboxTypeLabel(t: InboxItemType): string {
-  switch (t) {
+function inboxTypeLabel(type: InboxItemType): TranslateKey {
+  switch (type) {
     case "worker.ended":
-      return "ended";
+      return "orchestration.inbox.ended";
     case "worker.ask_user":
-      return "asked";
+      return "orchestration.inbox.asked";
     case "worker.auto_retry_failed":
-      return "retry failed";
+      return "orchestration.inbox.retryFailed";
     case "worker.process_alert":
-      return "process";
+      return "orchestration.inbox.process";
     case "worker.deleted":
-      return "deleted";
+      return "orchestration.inbox.deleted";
     case "worker.detached":
-      return "detached";
+      return "orchestration.inbox.detached";
   }
 }
 
 function WorkerControls({ link }: { link: SessionLink }) {
+  const t = useT();
   const openSession = useSessionStore((s) => s.setActiveSession);
   const supervisorId = link.supervisorId;
   if (supervisorId === undefined) return null;
   return (
     <div className="mt-2 text-xs text-neutral-400">
-      Owned by supervisor{" "}
+      {t("orchestration.worker.ownedBySupervisor")}{" "}
       <button
         type="button"
         onClick={() => openSession(supervisorId)}
@@ -481,13 +509,14 @@ function WorkerControls({ link }: { link: SessionLink }) {
         {supervisorId.slice(0, 8)}
       </button>
       {link.spawnedFrom !== undefined && link.spawnedFrom.mode === "summary" && (
-        <span className="ml-2 italic">(handoff with context summary)</span>
+        <span className="ml-2 italic">{t("orchestration.worker.handoffWithSummary")}</span>
       )}
     </div>
   );
 }
 
 function StateDot({ state }: { state: "streaming" | "idle" | "cold" }) {
+  const t = useT();
   const cls =
     state === "streaming"
       ? "bg-emerald-500 animate-pulse"
@@ -495,6 +524,10 @@ function StateDot({ state }: { state: "streaming" | "idle" | "cold" }) {
         ? "bg-sky-500"
         : "bg-neutral-400";
   return (
-    <span className={`inline-block h-2 w-2 rounded-full ${cls}`} title={state} aria-label={state} />
+    <span
+      className={`inline-block h-2 w-2 rounded-full ${cls}`}
+      title={t(STATE_LABEL_KEYS[state])}
+      aria-label={t(STATE_LABEL_KEYS[state])}
+    />
   );
 }

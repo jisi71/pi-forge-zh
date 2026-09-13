@@ -24,6 +24,7 @@ import { useFileStore } from "../store/file-store";
 import { useActiveProject } from "../store/project-store";
 import { useUiStore } from "../store/ui-store";
 import { api, ApiError, type FileTreeNode } from "../lib/api-client";
+import { t, useT } from "../i18n";
 import { ConfirmDialog, PromptDialog } from "./Modal";
 
 /**
@@ -49,6 +50,7 @@ type DialogState =
  * extensible to more actions as we add them).
  */
 export function FileBrowserPanel() {
+  const t = useT();
   const project = useActiveProject();
   const tree = useFileStore((s) =>
     project !== undefined ? s.treeByProject[project.id] : undefined,
@@ -78,6 +80,14 @@ export function FileBrowserPanel() {
   // chosen by the toolbar button (so the same hidden <input> can be
   // re-used for both root-level and per-folder uploads).
   const [uploadStatus, setUploadStatus] = useState<string | undefined>(undefined);
+  // Whether the upload/download banner should render its spinner. Kept
+  // as its own flag instead of pattern-matching on the copy so the
+  // label can be translated freely.
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const setUploadProgress = (message: string | undefined, busy: boolean): void => {
+    setUploadStatus(message);
+    setUploadBusy(busy);
+  };
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<string | undefined>(undefined);
   const uploadFiles = useFileStore((s) => s.uploadFiles);
@@ -113,9 +123,7 @@ export function FileBrowserPanel() {
 
   if (project === undefined) {
     return (
-      <div className="p-4 text-xs italic text-neutral-500">
-        Select a project to browse its files.
-      </div>
+      <div className="p-4 text-xs italic text-neutral-500">{t("files.browser.selectProject")}</div>
     );
   }
 
@@ -323,8 +331,9 @@ export function FileBrowserPanel() {
   const runUpload = async (targetDirAbsPath: string, files: File[]): Promise<void> => {
     if (files.length === 0) return;
     const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-    setUploadStatus(
-      `Hashing ${files.length} file${files.length === 1 ? "" : "s"} (${formatBytes(totalBytes)})…`,
+    setUploadProgress(
+      t.plural("files.upload.hashing", files.length, { size: formatBytes(totalBytes) }),
+      true,
     );
     try {
       const written = await uploadFiles(project.id, targetDirAbsPath, files, {
@@ -334,20 +343,26 @@ export function FileBrowserPanel() {
           // hook, so the label flips to "Uploading…" via the
           // post-progress branch below.
           if (hashed < total) {
-            setUploadStatus(
-              `Hashing ${formatBytes(hashed)} / ${formatBytes(total)} (${Math.floor((hashed / total) * 100)}%)…`,
+            setUploadProgress(
+              t("files.upload.hashingProgress", {
+                done: formatBytes(hashed),
+                total: formatBytes(total),
+                percent: Math.floor((hashed / total) * 100),
+              }),
+              true,
             );
           } else {
-            setUploadStatus(
-              `Uploading ${files.length} file${files.length === 1 ? "" : "s"} (${formatBytes(total)})…`,
+            setUploadProgress(
+              t.plural("files.upload.uploading", files.length, { size: formatBytes(total) }),
+              true,
             );
           }
         },
       });
-      setUploadStatus(`Uploaded ${written.length} file${written.length === 1 ? "" : "s"}.`);
-      window.setTimeout(() => setUploadStatus(undefined), 2500);
+      setUploadProgress(t.plural("files.upload.uploaded", written.length), false);
+      window.setTimeout(() => setUploadProgress(undefined, false), 2500);
     } catch {
-      setUploadStatus(undefined);
+      setUploadProgress(undefined, false);
       // store.error renders the failure banner
     }
   };
@@ -364,7 +379,7 @@ export function FileBrowserPanel() {
    * can't carry the Authorization header.
    */
   const downloadEntry = async (absPath: string | undefined): Promise<void> => {
-    setUploadStatus("Preparing download…");
+    setUploadProgress(t("files.download.preparing"), true);
     try {
       const { blob, filename } = await api.filesDownload(project.id, absPath);
       const url = URL.createObjectURL(blob);
@@ -377,9 +392,9 @@ export function FileBrowserPanel() {
       // Defer revoke a tick so Safari's download handler has a chance
       // to grab the blob — revoking inside the same task can race.
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setUploadStatus(undefined);
+      setUploadProgress(undefined, false);
     } catch (err) {
-      setUploadStatus(undefined);
+      setUploadProgress(undefined, false);
       // Surface via the store error slot for consistency with the
       // rest of the panel — wrap unknown errors in a code-ish string.
       useFileStore.setState({
@@ -414,7 +429,7 @@ export function FileBrowserPanel() {
               setDialog({ kind: "create", entryKind: "file", parentAbsPath: project.path })
             }
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="New file"
+            title={t("files.browser.newFile")}
           >
             <FilePlus2 size={14} />
           </button>
@@ -423,21 +438,21 @@ export function FileBrowserPanel() {
               setDialog({ kind: "create", entryKind: "folder", parentAbsPath: project.path })
             }
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="New folder"
+            title={t("files.browser.newFolder")}
           >
             <FolderPlus size={14} />
           </button>
           <button
             onClick={() => onPickUpload(project.path)}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Upload files into project root (drag-and-drop also works on any folder)"
+            title={t("files.browser.uploadTooltip")}
           >
             <Upload size={14} />
           </button>
           <button
             onClick={() => void downloadEntry(undefined)}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Download project as .tar.gz (skips node_modules, .git, dist, etc.)"
+            title={t("files.browser.downloadProjectTooltip")}
           >
             <Download size={14} />
           </button>
@@ -463,7 +478,7 @@ export function FileBrowserPanel() {
           <button
             onClick={() => void loadTree(project.id)}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-            title="Refresh"
+            title={t("common.refresh")}
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </button>
@@ -478,7 +493,7 @@ export function FileBrowserPanel() {
       />
       {uploadStatus !== undefined && (
         <div className="flex items-center gap-1.5 border-b border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-[11px] text-emerald-200 light:border-emerald-300 light:bg-emerald-50 light:text-emerald-800">
-          {!uploadStatus.startsWith("Uploaded") && <Loader2 size={11} className="animate-spin" />}
+          {uploadBusy && <Loader2 size={11} className="animate-spin" />}
           <span>{uploadStatus}</span>
         </div>
       )}
@@ -490,21 +505,21 @@ export function FileBrowserPanel() {
       {selectedPaths.size > 0 && (
         <div className="flex items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-900/60 px-3 py-1.5 text-[11px] text-neutral-300">
           <span>
-            {selectedPaths.size} selected
-            <span className="ml-2 text-neutral-500">(Cmd/Ctrl+click rows to add or remove)</span>
+            {t("files.selection.count", { count: selectedPaths.size })}
+            <span className="ml-2 text-neutral-500">{t("files.selection.hint")}</span>
           </span>
           <div className="flex gap-1">
             <button
               onClick={() => setDialog({ kind: "deleteMany", paths: Array.from(selectedPaths) })}
               className="rounded border border-red-700/50 px-2 py-0.5 text-red-300 hover:bg-red-900/20 light:border-red-400 light:text-red-700 light:hover:bg-red-50"
             >
-              Delete selected
+              {t("files.selection.deleteSelected")}
             </button>
             <button
               onClick={clearSelection}
               className="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-neutral-500"
             >
-              Clear
+              {t("common.clear")}
             </button>
           </div>
         </div>
@@ -530,7 +545,7 @@ export function FileBrowserPanel() {
         onDrop={(e) => void handleDrop(e, project.path)}
       >
         {tree === undefined && !loading && (
-          <p className="px-3 py-2 italic text-neutral-500">Tree not loaded.</p>
+          <p className="px-3 py-2 italic text-neutral-500">{t("files.tree.notLoaded")}</p>
         )}
         {tree !== undefined && (
           <Tree
@@ -570,7 +585,7 @@ export function FileBrowserPanel() {
         title={createDialogTitle(dialog, project.path)}
         label={createDialogLabel(dialog, project.path)}
         placeholder={createDialogPlaceholder(dialog)}
-        primaryLabel="Create"
+        primaryLabel={t("common.create")}
       />
       <ConfirmDialog
         open={dialog?.kind === "delete"}
@@ -579,20 +594,27 @@ export function FileBrowserPanel() {
         title={
           dialog?.kind === "delete"
             ? dialog.recursive
-              ? `"${dialog.name}" is not empty`
+              ? t("files.delete.notEmptyTitle", { name: dialog.name })
               : dialog.isDir
-                ? "Delete directory"
-                : "Delete file"
+                ? t("files.delete.directoryTitle")
+                : t("files.delete.fileTitle")
             : ""
         }
         message={
           dialog?.kind === "delete"
             ? dialog.recursive
-              ? `"${dialog.name}" contains files. Delete the directory and ALL its contents? This cannot be undone.`
-              : `Delete ${dialog.isDir ? "directory" : "file"} "${dialog.name}"? This cannot be undone.`
+              ? t("files.delete.notEmptyBody", { name: dialog.name })
+              : t("files.delete.body", {
+                  kind: dialog.isDir ? t("files.delete.kindDirectory") : t("files.delete.kindFile"),
+                  name: dialog.name,
+                })
             : ""
         }
-        primaryLabel={dialog?.kind === "delete" && dialog.recursive ? "Delete contents" : "Delete"}
+        primaryLabel={
+          dialog?.kind === "delete" && dialog.recursive
+            ? t("files.delete.confirmContents")
+            : t("common.delete")
+        }
         tone="danger"
       />
       <ConfirmDialog
@@ -601,15 +623,15 @@ export function FileBrowserPanel() {
         onConfirm={() => void submitDeleteMany()}
         title={
           dialog?.kind === "deleteMany"
-            ? `Delete ${dialog.paths.length} item${dialog.paths.length === 1 ? "" : "s"}`
+            ? t.plural("files.deleteMany.title", dialog.paths.length)
             : ""
         }
         message={
           dialog?.kind === "deleteMany"
-            ? `Delete the ${dialog.paths.length} selected file${dialog.paths.length === 1 ? "" : "s"} / folder${dialog.paths.length === 1 ? "" : "s"}? Folders are deleted recursively. This cannot be undone.`
+            ? t.plural("files.deleteMany.body", dialog.paths.length)
             : ""
         }
-        primaryLabel="Delete all"
+        primaryLabel={t("files.deleteMany.confirm")}
         tone="danger"
       />
       {contextMenu !== undefined && (
@@ -664,6 +686,7 @@ function FileContextMenu(props: {
   onAddFile?: () => void;
   onAddFolder?: () => void;
 }) {
+  const t = useT();
   // Memo-stable close ref so the effect's dep array doesn't churn on
   // every parent render — earlier `[props]` dep meant the outside-click
   // listener tore down + re-attached on every render of the parent
@@ -680,11 +703,11 @@ function FileContextMenu(props: {
     // mousedown fires before the click handler on the menu items, so
     // capture-phase + same-tick close would race. Listen on the next
     // tick so the menu's own click resolves first.
-    const t = setTimeout(() => window.addEventListener("mousedown", onMouseDown), 0);
+    const timer = setTimeout(() => window.addEventListener("mousedown", onMouseDown), 0);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onMouseDown);
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, []);
 
@@ -719,11 +742,11 @@ function FileContextMenu(props: {
         <ContextMenuItem
           onClick={addAsContext}
           icon={<AtSign size={12} />}
-          label="Add as @ context"
+          label={t("files.context.addAsContext")}
           title={
             props.kind === "folder"
-              ? "Append @<path>/ to the chat input so the model can ls / grep this folder"
-              : "Append @<path> to the chat input so the file's content is sent with the next prompt"
+              ? t("files.context.addAsContextFolderTitle")
+              : t("files.context.addAsContextFileTitle")
           }
         />
       )}
@@ -731,11 +754,11 @@ function FileContextMenu(props: {
         <ContextMenuItem
           onClick={addFile}
           icon={<FilePlus2 size={12} />}
-          label="Add file"
+          label={t("files.context.addFile")}
           title={
             props.kind === "folder"
-              ? "Create a new file inside this folder"
-              : "Create a new file at the project root"
+              ? t("files.context.addFileInFolderTitle")
+              : t("files.context.addFileInRootTitle")
           }
         />
       )}
@@ -743,11 +766,11 @@ function FileContextMenu(props: {
         <ContextMenuItem
           onClick={addFolder}
           icon={<FolderPlus size={12} />}
-          label="Add folder"
+          label={t("files.context.addFolder")}
           title={
             props.kind === "folder"
-              ? "Create a new subfolder inside this folder"
-              : "Create a new folder at the project root"
+              ? t("files.context.addFolderInFolderTitle")
+              : t("files.context.addFolderInRootTitle")
           }
         />
       )}
@@ -755,24 +778,26 @@ function FileContextMenu(props: {
         <ContextMenuItem
           onClick={rename}
           icon={<Pencil size={12} />}
-          label="Rename"
-          title="Rename this file or folder"
+          label={t("common.rename")}
+          title={t("files.context.renameTitle")}
         />
       )}
       {download !== undefined && (
         <ContextMenuItem
           onClick={download}
           icon={<Download size={12} />}
-          label="Download"
-          title={props.kind === "folder" ? "Download folder as .tar.gz" : "Download this file"}
+          label={t("common.download")}
+          title={
+            props.kind === "folder" ? t("files.tree.downloadFolder") : t("files.tree.downloadFile")
+          }
         />
       )}
       {del !== undefined && (
         <ContextMenuItem
           onClick={del}
           icon={<Trash2 size={12} />}
-          label="Delete"
-          title="Delete this file or folder"
+          label={t("common.delete")}
+          title={t("files.context.deleteTitle")}
           tone="danger"
         />
       )}
@@ -845,6 +870,7 @@ interface TreeProps {
 }
 
 function Tree(props: TreeProps) {
+  const t = useT();
   const { node, depth, projectPath } = props;
   // Root: render only its children, no row for the root itself (the
   // panel header already shows the project name).
@@ -999,7 +1025,7 @@ function Tree(props: TreeProps) {
                     props.onCreate(absPath, node.path, "file");
                   }}
                   className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="New file in this folder"
+                  title={t("files.tree.newFileInFolder")}
                 >
                   <FilePlus2 size={11} />
                 </button>
@@ -1009,7 +1035,7 @@ function Tree(props: TreeProps) {
                     props.onCreate(absPath, node.path, "folder");
                   }}
                   className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="New subfolder in this folder"
+                  title={t("files.tree.newSubfolder")}
                 >
                   <FolderPlus size={11} />
                 </button>
@@ -1019,7 +1045,7 @@ function Tree(props: TreeProps) {
                     props.onUpload(absPath);
                   }}
                   className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="Upload into this folder"
+                  title={t("files.tree.uploadIntoFolder")}
                 >
                   <Upload size={11} />
                 </button>
@@ -1031,7 +1057,7 @@ function Tree(props: TreeProps) {
                 props.onDownload(absPath);
               }}
               className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-              title={isDir ? "Download folder as .tar.gz" : "Download file"}
+              title={isDir ? t("files.tree.downloadFolder") : t("files.tree.downloadFile")}
             >
               <Download size={11} />
             </button>
@@ -1041,7 +1067,7 @@ function Tree(props: TreeProps) {
                 props.onRenameStart(absPath, node.name);
               }}
               className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-              title="Rename"
+              title={t("common.rename")}
             >
               <Pencil size={11} />
             </button>
@@ -1051,7 +1077,7 @@ function Tree(props: TreeProps) {
                 props.onDelete(absPath, node.name, isDir);
               }}
               className="rounded p-0.5 text-neutral-500 hover:bg-red-900/30 hover:text-red-300 light:hover:bg-red-100 light:hover:text-red-700"
-              title="Delete"
+              title={t("common.delete")}
             >
               <Trash2 size={11} />
             </button>
@@ -1099,15 +1125,21 @@ function parentDisplay(parentAbsPath: string, projectPath: string): string | und
 function createDialogTitle(dialog: DialogState, projectPath: string): string {
   if (dialog?.kind !== "create") return "";
   const rel = parentDisplay(dialog.parentAbsPath, projectPath);
-  const noun = dialog.entryKind === "folder" ? "folder" : "file";
-  return rel === undefined ? `New ${noun}` : `New ${noun} in ${rel}/`;
+  const noun =
+    dialog.entryKind === "folder" ? t("files.create.folderNoun") : t("files.create.fileNoun");
+  return rel === undefined
+    ? t("files.create.title", { noun })
+    : t("files.create.titleIn", { noun, path: rel });
 }
 
 function createDialogLabel(dialog: DialogState, projectPath: string): string {
   if (dialog?.kind !== "create") return "";
   const rel = parentDisplay(dialog.parentAbsPath, projectPath);
-  const noun = dialog.entryKind === "folder" ? "Folder name" : "File name";
-  return rel === undefined ? `${noun} (relative to project root)` : `${noun} (in ${rel}/)`;
+  const noun =
+    dialog.entryKind === "folder" ? t("files.create.folderName") : t("files.create.fileName");
+  return rel === undefined
+    ? t("files.create.label", { noun })
+    : t("files.create.labelIn", { noun, path: rel });
 }
 
 function createDialogPlaceholder(dialog: DialogState): string {

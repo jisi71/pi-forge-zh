@@ -16,7 +16,12 @@ export type ThemeId =
 
 export interface ThemeDef {
   id: ThemeId;
-  /** User-facing label in the picker. */
+  /**
+   * English label. NOT used by the UI any more: the theme picker renders a
+   * localized label from `settings.appearance.themes.<id>` (see
+   * `THEME_LABELS` in SettingsPanel.tsx). Kept as the canonical English name
+   * for logs/debugging; treat the locale bundle as the source of UI copy.
+   */
   label: string;
   /** Drives CodeMirror theme + xterm color choices. */
   mode: "dark" | "light";

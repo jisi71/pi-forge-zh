@@ -56,6 +56,9 @@ import {
   isPairedToolResult,
   isToolCallBlock,
 } from "../lib/tool-call-pairing";
+// `useT` for components, the module-level `t` for the plain helper
+// functions in this file (process / worker status titles).
+import { t, useT } from "../i18n";
 
 /**
  * Per-ChatView diff view-type preference. Each diff-rendering surface
@@ -119,6 +122,7 @@ const FALLBACK_TIMELINE_POSITION: ChatTimelinePosition = {
  * only).
  */
 export function ChatView({ sessionId }: Props) {
+  const t = useT();
   // EMPTY_* fallbacks are stable module-level constants — using `?? []` here
   // would return a new ref each render and trip React 18's
   // useSyncExternalStore infinite-loop guard. See session-store.ts.
@@ -423,10 +427,10 @@ export function ChatView({ sessionId }: Props) {
                   aria-haspopup="menu"
                   aria-expanded={exportMenuOpen}
                   className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                  title="Export this conversation"
+                  title={t("chatView.toolbar.exportTitle")}
                 >
                   <Download size={11} />
-                  Export
+                  {t("chatView.toolbar.export")}
                 </button>
                 {exportMenuOpen && (
                   <div
@@ -438,14 +442,16 @@ export function ChatView({ sessionId }: Props) {
                       onClick={() => void doExport("markdown")}
                       className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
                     >
-                      Markdown <span className="text-neutral-500">(.md)</span>
+                      {t("chatView.toolbar.exportMarkdown")}{" "}
+                      <span className="text-neutral-500">(.md)</span>
                     </button>
                     <button
                       role="menuitem"
                       onClick={() => void doExport("jsonl")}
                       className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
                     >
-                      Raw JSONL <span className="text-neutral-500">(.jsonl)</span>
+                      {t("chatView.toolbar.exportRawJsonl")}{" "}
+                      <span className="text-neutral-500">(.jsonl)</span>
                     </button>
                   </div>
                 )}
@@ -453,16 +459,16 @@ export function ChatView({ sessionId }: Props) {
             )}
             {exportError !== undefined && (
               <span className="text-[10px] text-amber-400 light:text-amber-700" role="status">
-                Export failed: {exportError}
+                {t("chatView.toolbar.exportFailed", { error: exportError })}
               </span>
             )}
             <button
               onClick={() => setTreeOpen(true)}
               className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-              title="Open session tree (navigate / fork from any prior point)"
+              title={t("chatView.toolbar.treeTitle")}
             >
               <GitBranch size={11} />
-              Tree
+              {t("chatView.toolbar.tree")}
             </button>
             {orchestrationEnabled && (
               <button
@@ -473,10 +479,10 @@ export function ChatView({ sessionId }: Props) {
                     ? "bg-neutral-800 text-violet-300"
                     : "text-neutral-400 hover:text-neutral-200"
                 }`}
-                title="Orchestration — supervisor / worker controls"
+                title={t("chatView.toolbar.orchTitle")}
               >
                 <Users size={11} />
-                Orch
+                {t("chatView.toolbar.orch")}
               </button>
             )}
           </div>
@@ -498,8 +504,8 @@ export function ChatView({ sessionId }: Props) {
               type="button"
               onClick={() => clearBanner(sessionId)}
               className="-mr-1 shrink-0 rounded p-0.5 text-amber-300 hover:bg-amber-900/40 hover:text-amber-100 light:text-amber-700 light:hover:bg-amber-100 light:hover:text-amber-900"
-              title="Dismiss"
-              aria-label="Dismiss banner"
+              title={t("common.dismiss")}
+              aria-label={t("chatView.banner.dismiss")}
             >
               <X size={14} />
             </button>
@@ -511,7 +517,7 @@ export function ChatView({ sessionId }: Props) {
             !isStreaming &&
             extensionNotifications.length === 0 && (
               <p className="mt-12 text-center text-sm text-neutral-500">
-                No messages yet. Send a prompt to get started.
+                {t("chatView.empty.noMessages")}
               </p>
             )}
           <div ref={messageListRef} className="chat-message-list mx-auto max-w-3xl space-y-4">
@@ -765,6 +771,7 @@ function ExtensionNotificationEntry({
   notification: ExtensionUiNotification;
   onDismiss: () => void;
 }) {
+  const t = useT();
   const severityClass =
     notification.level === "error"
       ? "border-red-700/40 bg-red-900/20 text-red-100 light:border-red-300 light:bg-red-50 light:text-red-950"
@@ -780,7 +787,7 @@ function ExtensionNotificationEntry({
     >
       <div className="min-w-0 flex-1">
         <div className="mb-1 text-[10px] font-medium uppercase tracking-wider opacity-75">
-          extension {notification.level}
+          {t("chatView.extensionNotification.levelLabel", { level: notification.level })}
         </div>
         <ChatMarkdown text={notification.message} size="xs" />
       </div>
@@ -788,8 +795,8 @@ function ExtensionNotificationEntry({
         type="button"
         onClick={onDismiss}
         className="-mr-1 shrink-0 rounded p-0.5 opacity-75 hover:bg-neutral-900/30 hover:text-white hover:opacity-100 light:hover:bg-neutral-200"
-        title="Dismiss"
-        aria-label="Dismiss extension notification"
+        title={t("common.dismiss")}
+        aria-label={t("chatView.extensionNotification.dismiss")}
       >
         <X size={14} />
       </button>
@@ -808,6 +815,7 @@ function StreamingTimelineEntry({
   generatingToolCall: ToolCallGeneration | undefined;
   onVisibleOrUpdate: () => void;
 }) {
+  const t = useT();
   if (streamingText.length > 0) {
     return (
       <div
@@ -815,7 +823,7 @@ function StreamingTimelineEntry({
         data-message-role="assistant"
       >
         <div className="mb-1 text-[10px] uppercase tracking-wider text-neutral-500">
-          assistant (streaming)
+          {t("chatView.streaming.label")}
         </div>
         <div className="text-neutral-100">
           <ChatMarkdown text={streamingText} />
@@ -843,6 +851,7 @@ function StreamingTimelineEntry({
  * with the new (smaller) arrays — no need to pop locally.
  */
 function QueuedMessages({ queued }: { queued: { steering: string[]; followUp: string[] } }) {
+  const t = useT();
   const all: { kind: "steer" | "followUp"; text: string }[] = [];
   for (const text of queued.steering) all.push({ kind: "steer", text });
   for (const text of queued.followUp) all.push({ kind: "followUp", text });
@@ -850,7 +859,7 @@ function QueuedMessages({ queued }: { queued: { steering: string[]; followUp: st
   return (
     <div className="rounded-md border border-neutral-800 bg-neutral-900/40 px-3 py-2">
       <div className="mb-1 text-[10px] uppercase tracking-wider text-neutral-500">
-        queued ({all.length})
+        {t("chatView.queued.title", { count: all.length })}
       </div>
       <ul className="space-y-1">
         {all.map((q) => (
@@ -871,11 +880,11 @@ function QueuedMessages({ queued }: { queued: { steering: string[]; followUp: st
               }
               title={
                 q.kind === "steer"
-                  ? "Delivered at the agent's next decision point (often mid-tool)"
-                  : "Delivered after the agent goes fully idle"
+                  ? t("chatView.queued.steerTitle")
+                  : t("chatView.queued.followUpTitle")
               }
             >
-              {q.kind === "steer" ? "steer" : "follow-up"}
+              {q.kind === "steer" ? t("chatView.queued.steer") : t("chatView.queued.followUp")}
             </span>
             <span className="truncate">{q.text}</span>
           </li>
@@ -892,14 +901,15 @@ function QueuedMessages({ queued }: { queued: { steering: string[]; followUp: st
  * spinner. Outside tool execution we fall back to "Thinking…".
  */
 function ActiveToolPlaceholder({ tool }: { tool: ActiveTool | undefined }) {
+  const t = useT();
   if (tool === undefined) {
     return (
       <div
         className="flex items-center gap-2 text-xs italic text-neutral-500"
         aria-live="polite"
-        aria-label="Agent is thinking"
+        aria-label={t("chatView.activeTool.thinkingAria")}
       >
-        <span>Thinking</span>
+        <span>{t("chatView.activeTool.thinking")}</span>
         <span className="pi-thinking-dots" aria-hidden="true">
           <span>.</span>
           <span>.</span>
@@ -911,7 +921,7 @@ function ActiveToolPlaceholder({ tool }: { tool: ActiveTool | undefined }) {
   return (
     <div className="flex items-center gap-2 text-xs text-neutral-400">
       <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-neutral-400" />
-      <span className="text-neutral-500">running</span>
+      <span className="text-neutral-500">{t("chatView.activeTool.running")}</span>
       <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[11px] text-neutral-200">
         {tool.name}
       </code>
@@ -934,6 +944,7 @@ function ToolCallGenerationPlaceholder({
   toolCall: ToolCallGeneration;
   onVisibleOrUpdate: () => void;
 }) {
+  const t = useT();
   const argsPreview = formatToolCallArgsPreview(toolCall);
   const argsRef = useRef<HTMLPreElement>(null);
   const [visible, setVisible] = useState(false);
@@ -961,11 +972,13 @@ function ToolCallGenerationPlaceholder({
     <div
       className="w-full rounded border border-amber-900/50 bg-amber-950/20 px-2 py-1 text-[11px] text-amber-100 light:border-amber-300 light:bg-amber-50 light:text-amber-900"
       aria-live="polite"
-      aria-label="Agent is generating a tool call"
+      aria-label={t("chatView.toolCallGeneration.aria")}
     >
       <div className="flex items-center gap-1.5">
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300 light:bg-amber-700" />
-        <span className="text-amber-300 light:text-amber-800">generating tool call</span>
+        <span className="text-amber-300 light:text-amber-800">
+          {t("chatView.toolCallGeneration.label")}
+        </span>
         {toolCall.name !== undefined && (
           <code className="rounded bg-amber-900/40 px-1 py-0.5 font-mono text-[10px] text-amber-50 light:bg-amber-100 light:text-amber-950">
             {toolCall.name}
@@ -1017,6 +1030,7 @@ function ChatEditDiff({
   adds: number;
   dels: number;
 }) {
+  const t = useT();
   const { viewType, setViewType } = useContext(ChatDiffViewContext);
   return (
     <details className="group rounded border border-neutral-800 bg-neutral-950 text-xs">
@@ -1028,7 +1042,7 @@ function ChatEditDiff({
           <span className="ml-1 text-red-400 light:text-red-700">−{dels}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1">
-          <CopyButton getText={() => diff} title="Copy edit output" compact />
+          <CopyButton getText={() => diff} title={t("chatView.chatEditDiff.copy")} compact />
           <button
             onClick={(e) => {
               // The summary's default click toggles the <details>; stop
@@ -1041,8 +1055,8 @@ function ChatEditDiff({
             className="rounded p-0.5 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
             title={
               viewType === "split"
-                ? "Switch chat diffs to unified view"
-                : "Switch chat diffs to side-by-side view"
+                ? t("chatView.chatEditDiff.toUnified")
+                : t("chatView.chatEditDiff.toSplit")
             }
           >
             {viewType === "split" ? <Rows2 size={11} /> : <Columns2 size={11} />}
@@ -1122,6 +1136,7 @@ function extractFileRefs(text: string): { stripped: string; refs: FileRef[] } {
 }
 
 function FileRefBadge({ ref: r }: { ref: FileRef }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const isInline = r.kind === "inline";
   return (
@@ -1141,8 +1156,11 @@ function FileRefBadge({ ref: r }: { ref: FileRef }) {
         }`}
         title={
           isInline
-            ? `${r.path} — click to ${expanded ? "collapse" : "expand"}`
-            : `${r.path} — model will load this on demand using its read tool (file is larger than the inline threshold)`
+            ? t("chatView.fileRef.inlineTitle", {
+                path: r.path,
+                action: expanded ? t("common.collapse") : t("common.expand"),
+              })
+            : t("chatView.fileRef.deferTitle", { path: r.path })
         }
       >
         {isInline ? (
@@ -1165,7 +1183,7 @@ function FileRefBadge({ ref: r }: { ref: FileRef }) {
         )}
         {!isInline && (
           <span className="text-[10px] text-emerald-300/70 light:text-emerald-700/80">
-            on demand
+            {t("chatView.fileRef.onDemand")}
           </span>
         )}
       </button>
@@ -1271,6 +1289,7 @@ function Message({
   message: AgentMessageLike;
   toolResultsById?: Map<string, AgentMessageLike>;
 }) {
+  const t = useT();
   // Per-message toggle: rendered markdown (default) ↔ raw plaintext.
   // Useful when the user wants to copy a literal `**bold**` or see
   // exactly what whitespace the assistant emitted. State lives at
@@ -1300,7 +1319,8 @@ function Message({
         const src = isBlob ? data : `data:${mime};base64,${data}`;
         if (data.length > 0) images.push({ src, key: `img-${i}` });
       } else if (b.type === "file") {
-        const name = typeof b.filename === "string" ? b.filename : "attachment";
+        const name =
+          typeof b.filename === "string" ? b.filename : t("chatView.message.attachmentFallback");
         const file: { name: string; size?: number; key: string } = { name, key: `file-${i}` };
         if (typeof b.size === "number") file.size = b.size;
         files.push(file);
@@ -1313,12 +1333,14 @@ function Message({
       >
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400">you</span>
+            <span className="text-[10px] uppercase tracking-wider text-neutral-400">
+              {t("chatView.role.you")}
+            </span>
             <MessageTimestamp ts={(message as { timestamp?: unknown }).timestamp} />
           </div>
           {text.length > 0 && (
             <div className="flex items-center gap-1">
-              <CopyButton getText={() => text} title="Copy message text" />
+              <CopyButton getText={() => text} title={t("chatView.copy.messageText")} />
               <RawToggle showRaw={showRaw} onToggle={setShowRaw} />
             </div>
           )}
@@ -1452,7 +1474,9 @@ function Message({
   return (
     <details className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-400">
       <summary className="cursor-pointer">
-        unknown message ({String(message.role ?? message.type ?? "?")})
+        {t("chatView.unknownMessage.summary", {
+          type: String(message.role ?? message.type ?? "?"),
+        })}
       </summary>
       <pre className="mt-2 overflow-auto whitespace-pre-wrap text-[10px] text-neutral-500">
         {JSON.stringify(message, null, 2)}
@@ -1517,21 +1541,29 @@ function LifecycleStatusCard({
 }
 
 function processStatusTitle(details: Record<string, unknown>, state: string): string {
-  const name = typeof details.name === "string" ? details.name : "process";
-  if (state === "success") return `Process completed: ${name}`;
-  if (state === "failure") return `Process failed: ${name}`;
-  if (state === "killed") return `Process killed: ${name}`;
-  if (state === "watch") return `Process watch matched: ${name}`;
-  return `Process update: ${name}`;
+  const name =
+    typeof details.name === "string" ? details.name : t("chatView.lifecycle.process.fallback");
+  if (state === "success") return t("chatView.lifecycle.process.completed", { name });
+  if (state === "failure") return t("chatView.lifecycle.process.failed", { name });
+  if (state === "killed") return t("chatView.lifecycle.process.killed", { name });
+  if (state === "watch") return t("chatView.lifecycle.process.watchMatched", { name });
+  return t("chatView.lifecycle.process.update", { name });
 }
 
 function workerStatusTitle(details: Record<string, unknown>, state: string): string {
-  const workerId = typeof details.workerId === "string" ? details.workerId : "worker";
-  if (state === "ended") return `Worker completed: ${workerId}`;
-  if (state === "failed" || state === "errored") return `Worker failed: ${workerId}`;
-  if (state === "deleted") return `Worker removed: ${workerId}`;
-  if (state === "awaiting_question") return `Worker needs input: ${workerId}`;
-  return `Worker update: ${workerId}`;
+  const workerId =
+    typeof details.workerId === "string"
+      ? details.workerId
+      : t("chatView.lifecycle.worker.fallback");
+  if (state === "ended") return t("chatView.lifecycle.worker.completed", { id: workerId });
+  if (state === "failed" || state === "errored") {
+    return t("chatView.lifecycle.worker.failed", { id: workerId });
+  }
+  if (state === "deleted") return t("chatView.lifecycle.worker.removed", { id: workerId });
+  if (state === "awaiting_question") {
+    return t("chatView.lifecycle.worker.needsInput", { id: workerId });
+  }
+  return t("chatView.lifecycle.worker.update", { id: workerId });
 }
 
 function stringifyCustomContent(content: unknown): string {
@@ -1570,6 +1602,7 @@ function AssistantMessageBubble({
   showRaw: boolean;
   setShowRaw: (next: boolean) => void;
 }) {
+  const t = useT();
   // Show the raw toggle only when the message has at least one
   // text block — toolCall and thinking blocks aren't markdown and
   // the toggle would do nothing useful for them.
@@ -1596,14 +1629,16 @@ function AssistantMessageBubble({
     >
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-500">assistant</span>
+          <span className="text-[10px] uppercase tracking-wider text-neutral-500">
+            {t("chatView.role.assistant")}
+          </span>
           <MessageTimestamp ts={(message as { timestamp?: unknown }).timestamp} />
         </div>
         {hasTextBlock && (
           <div className="flex items-center gap-1">
             <CopyButton
               getText={() => assistantTextContent(content)}
-              title="Copy all text from this assistant message"
+              title={t("chatView.copy.assistantText")}
             />
             <RawToggle showRaw={showRaw} onToggle={setShowRaw} />
           </div>
@@ -1617,7 +1652,7 @@ function AssistantMessageBubble({
           className="mt-2 rounded border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200 light:border-amber-300 light:bg-amber-50 light:text-amber-800"
           role="alert"
         >
-          <span className="font-medium">Provider error: </span>
+          <span className="font-medium">{t("chatView.providerError")}</span>
           {inlineError}
         </div>
       )}
@@ -1860,6 +1895,7 @@ function toolPreviewFromArgs(name: string, args: unknown): string | undefined {
  * input/output detail is lost.
  */
 function ToolCallBatchCard({ entries }: { entries: ToolBatchEntry[] }) {
+  const t = useT();
   const toolEntries = entries.filter((entry) => entry.kind === "tool");
   const toolCount = toolEntries.length;
   const { inFlightCount, failedChildCount, hasChildFailures, hasAggregateError } =
@@ -1870,7 +1906,7 @@ function ToolCallBatchCard({ entries }: { entries: ToolBatchEntry[] }) {
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const countSummary = [...counts].map(([name, count]) => `${name} ×${count}`).join(" · ");
-  const failedChildLabel = `${failedChildCount} ${failedChildCount === 1 ? "child" : "children"} failed`;
+  const failedChildLabel = t.plural("chatView.toolBatch.childFailures", failedChildCount);
   const previews = toolEntries
     .map((e) => {
       const name = String(e.block.name ?? "tool");
@@ -1884,9 +1920,9 @@ function ToolCallBatchCard({ entries }: { entries: ToolBatchEntry[] }) {
       <summary className="flex cursor-pointer flex-col gap-2 px-3 py-2 text-neutral-300 sm:flex-row sm:items-center sm:justify-between">
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-neutral-500">→</span>
-          <span className="font-mono">tools</span>
+          <span className="font-mono">{t("chatView.toolBatch.label")}</span>
           <span className="text-neutral-500">
-            ×{toolCount} {toolCount === 1 ? "call" : "calls"}
+            ×{t.plural("chatView.toolBatch.callCount", toolCount)}
           </span>
           <span className="max-w-full truncate text-neutral-400" title={countSummary}>
             {countSummary}
@@ -1901,20 +1937,20 @@ function ToolCallBatchCard({ entries }: { entries: ToolBatchEntry[] }) {
         <div className="flex shrink-0 items-center gap-1 self-start sm:self-auto">
           {inFlightCount > 0 && (
             <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400">
-              {inFlightCount} running…
+              {t("chatView.toolBatch.inFlight", { count: inFlightCount })}
             </span>
           )}
           {hasChildFailures && (
             <span
               className="rounded bg-amber-900/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800"
-              title="One or more child tool calls failed; expand the batch to see the failed call."
+              title={t("chatView.toolBatch.childFailuresTitle")}
             >
               {failedChildLabel}
             </span>
           )}
           {hasAggregateError && (
             <span className="rounded bg-red-900/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-red-300 light:bg-red-100 light:text-red-800">
-              error
+              {t("chatView.errorBadge")}
             </span>
           )}
         </div>
@@ -1942,6 +1978,7 @@ function AssistantBlock({
   /** When true, render text blocks as plain `<pre>` instead of markdown. */
   showRaw?: boolean;
 }) {
+  const t = useT();
   const type = block.type;
 
   if (type === "text" && typeof block.text === "string") {
@@ -1951,7 +1988,7 @@ function AssistantBlock({
   if (type === "thinking" && typeof block.thinking === "string") {
     return (
       <details className="rounded border border-neutral-800 px-2 py-1 text-xs text-neutral-400">
-        <summary className="cursor-pointer">Thinking…</summary>
+        <summary className="cursor-pointer">{t("chatView.thinkingSummary")}</summary>
         <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-[12px]">
           {block.thinking}
         </pre>
@@ -1967,7 +2004,9 @@ function AssistantBlock({
 
   return (
     <details className="text-xs text-neutral-500">
-      <summary className="cursor-pointer">block ({String(type ?? "?")})</summary>
+      <summary className="cursor-pointer">
+        {t("chatView.blockSummary", { type: String(type ?? "?") })}
+      </summary>
       <pre className="mt-1 overflow-auto whitespace-pre-wrap text-[10px]">
         {JSON.stringify(block, null, 2)}
       </pre>
@@ -1998,6 +2037,7 @@ function ToolCallEntry({
   block: Record<string, unknown>;
   result: AgentMessageLike | undefined;
 }) {
+  const t = useT();
   const name = String(block.name ?? "tool");
   const args = block.input ?? block.arguments ?? {};
   const argsText = typeof args === "string" ? args : JSON.stringify(args, null, 2);
@@ -2087,12 +2127,12 @@ function ToolCallEntry({
         <div className="flex shrink-0 items-center gap-1">
           {result === undefined && (
             <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400">
-              running…
+              {t("chatView.toolCall.running")}
             </span>
           )}
           {isError && (
             <span className="rounded bg-red-900/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-red-300 light:bg-red-100 light:text-red-800">
-              error
+              {t("chatView.errorBadge")}
             </span>
           )}
         </div>
@@ -2101,9 +2141,13 @@ function ToolCallEntry({
       {argsText.length > 0 && (
         <details className="border-t border-neutral-800/60">
           <summary className="cursor-pointer px-3 py-1.5 text-[11px] text-neutral-500 hover:text-neutral-300">
-            Input
+            {t("chatView.toolCall.input")}
             <span className="float-right ml-2">
-              <CopyButton getText={() => argsText} title={`Copy ${name} input`} compact />
+              <CopyButton
+                getText={() => argsText}
+                title={t("chatView.toolCall.copyInput", { name })}
+                compact
+              />
             </span>
           </summary>
           <pre className="overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-400">
@@ -2115,7 +2159,7 @@ function ToolCallEntry({
       {result !== undefined && (
         <details className="border-t border-neutral-800/60">
           <summary className="cursor-pointer px-3 py-1.5 text-[11px] text-neutral-500 hover:text-neutral-300">
-            Output
+            {t("chatView.toolCall.output")}
             {editStats !== undefined && (
               <span className="ml-2 font-mono text-[10px]">
                 <span className="text-emerald-400 light:text-emerald-700">+{editStats.adds}</span>{" "}
@@ -2127,8 +2171,10 @@ function ToolCallEntry({
             )}
             <span className="float-right ml-2">
               <CopyButton
-                getText={() => editDiff ?? (outputText.length > 0 ? outputText : "(empty)")}
-                title={`Copy ${name} output`}
+                getText={() =>
+                  editDiff ?? (outputText.length > 0 ? outputText : t("chatView.toolCall.empty"))
+                }
+                title={t("chatView.toolCall.copyOutput", { name })}
                 compact
               />
             </span>
@@ -2144,7 +2190,7 @@ function ToolCallEntry({
             </div>
           ) : (
             <pre className="max-h-96 overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-300">
-              {outputText.length > 0 ? outputText : "(empty)"}
+              {outputText.length > 0 ? outputText : t("chatView.toolCall.empty")}
             </pre>
           )}
         </details>
@@ -2154,6 +2200,7 @@ function ToolCallEntry({
 }
 
 function ToolResult({ message }: { message: AgentMessageLike }) {
+  const t = useT();
   const toolName = String(message.toolName ?? "tool");
   const isError = message.isError === true;
   const content = Array.isArray(message.content) ? message.content : [];
@@ -2183,7 +2230,7 @@ function ToolResult({ message }: { message: AgentMessageLike }) {
             <span className="text-neutral-500">read{fn !== undefined ? " " : ""}</span>
             {fn !== undefined && <span className="font-mono">{fn}</span>}
           </span>
-          <CopyButton getText={() => text} title="Copy read output" compact />
+          <CopyButton getText={() => text} title={t("chatView.toolResult.copyRead")} compact />
         </summary>
         <pre className="overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-400">{text}</pre>
       </details>
@@ -2198,10 +2245,12 @@ function ToolResult({ message }: { message: AgentMessageLike }) {
       >
         <div className="flex items-center justify-between gap-2 px-3 py-2 text-neutral-400">
           <span className="min-w-0 truncate">
-            <span className="text-neutral-500">bash{cmd !== undefined ? " → " : " output"}</span>
+            <span className="text-neutral-500">
+              {cmd !== undefined ? "bash → " : t("chatView.toolResult.bashOutput")}
+            </span>
             {cmd !== undefined && <span className="font-mono">{cmd}</span>}
           </span>
-          <CopyButton getText={() => text} title="Copy bash output" compact />
+          <CopyButton getText={() => text} title={t("chatView.toolResult.copyBash")} compact />
         </div>
         <pre className="max-h-64 overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-300">
           {text}
@@ -2218,9 +2267,11 @@ function ToolResult({ message }: { message: AgentMessageLike }) {
           <span>
             <span className="text-neutral-500">write{fn !== undefined ? " " : ""}</span>
             {fn !== undefined && <span className="font-mono">{fn}</span>}
-            <span className="ml-2 text-neutral-500">({text.split("\n").length} lines)</span>
+            <span className="ml-2 text-neutral-500">
+              ({t.plural("common.lineCount", text.split("\n").length)})
+            </span>
           </span>
-          <CopyButton getText={() => text} title="Copy write output" compact />
+          <CopyButton getText={() => text} title={t("chatView.toolResult.copyWrite")} compact />
         </summary>
         <pre className="overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-400">{text}</pre>
       </details>
@@ -2243,9 +2294,15 @@ function ToolResult({ message }: { message: AgentMessageLike }) {
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-neutral-300">
         <span>
           <span className="text-neutral-500">{toolName}</span>
-          {isError && <span className="ml-2 text-red-400 light:text-red-700">error</span>}
+          {isError && (
+            <span className="ml-2 text-red-400 light:text-red-700">{t("chatView.errorBadge")}</span>
+          )}
         </span>
-        <CopyButton getText={() => text} title={`Copy ${toolName} output`} compact />
+        <CopyButton
+          getText={() => text}
+          title={t("chatView.toolResult.copyGeneric", { name: toolName })}
+          compact
+        />
       </summary>
       <pre className="overflow-auto px-3 pb-2 font-mono text-[11px] text-neutral-400">{text}</pre>
     </details>
@@ -2281,6 +2338,7 @@ function SubagentInflightOrResult({
   isError: boolean;
   outputText: string;
 }) {
+  const t = useT();
   if (result !== undefined) {
     return (
       <SubagentResultCard
@@ -2303,10 +2361,12 @@ function SubagentInflightOrResult({
     const action = typeof input.action === "string" ? input.action : undefined;
     const tasks = Array.isArray(input.tasks) ? input.tasks.length : undefined;
     const chain = Array.isArray(input.chain) ? input.chain.length : undefined;
-    if (action !== undefined) summary = `action: ${action}`;
-    else if (tasks !== undefined) summary = `${tasks} parallel task${tasks === 1 ? "" : "s"}`;
-    else if (chain !== undefined) summary = `${chain}-step chain`;
-    else if (agent !== undefined && task !== undefined) summary = `${agent} — ${task}`;
+    if (action !== undefined) summary = t("chatView.subagent.summaryAction", { action });
+    else if (tasks !== undefined) {
+      summary = t.plural("chatView.subagent.summaryParallelTasks", tasks);
+    } else if (chain !== undefined) {
+      summary = t("chatView.subagent.summaryChain", { count: chain });
+    } else if (agent !== undefined && task !== undefined) summary = `${agent} — ${task}`;
     else if (agent !== undefined) summary = agent;
   }
   return (
@@ -2315,7 +2375,7 @@ function SubagentInflightOrResult({
         <div className="flex min-w-0 items-center gap-1.5">
           <Users size={11} className="shrink-0 text-sky-300 light:text-sky-700" />
           <span className="truncate font-medium text-sky-100 light:text-sky-900">
-            Sub-agent running…
+            {t("chatView.subagent.running")}
           </span>
           {summary !== undefined && (
             <span
@@ -2342,6 +2402,7 @@ function SubagentResultCard({
   outputText: string;
   isError: boolean;
 }) {
+  const t = useT();
   const setActiveSession = useSessionStore((s) => s.setActiveSession);
   const setActiveProject = useProjectStore((s) => s.setActive);
   const byProject = useSessionStore((s) => s.byProject);
@@ -2389,12 +2450,12 @@ function SubagentResultCard({
   const count = parsed.results.length;
   const headline =
     count === 1
-      ? `Sub-agent: ${parsed.results[0]!.agent}`
+      ? t("chatView.subagent.headlineSingle", { agent: parsed.results[0]!.agent })
       : count > 1
-        ? `${count} sub-agents (${parsed.mode})`
+        ? t("chatView.subagent.headlineMultiple", { count, mode: parsed.mode })
         : isManagement
-          ? "Sub-agent management"
-          : "Sub-agent";
+          ? t("chatView.subagent.headlineManagement")
+          : t("common.subagent");
 
   // Light-blue (sky) color treatment per request — distinctive but
   // soft. Failures get a red border but keep the rest of the card
@@ -2413,14 +2474,18 @@ function SubagentResultCard({
           {parsed.context !== undefined && (
             <span
               className="shrink-0 rounded bg-sky-900/40 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider text-sky-200 light:bg-sky-100 light:text-sky-800"
-              title={parsed.context === "fork" ? "Forked from parent context" : "Fresh context"}
+              title={
+                parsed.context === "fork"
+                  ? t("chatView.subagent.contextFork")
+                  : t("chatView.subagent.contextFresh")
+              }
             >
               {parsed.context}
             </span>
           )}
           {isError && (
             <span className="shrink-0 rounded bg-red-900/40 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider text-red-200 light:bg-red-100 light:text-red-800">
-              error
+              {t("chatView.errorBadge")}
             </span>
           )}
         </div>
@@ -2428,10 +2493,12 @@ function SubagentResultCard({
           <button
             onClick={() => openByFile(parsed.results[0]!.sessionFile)}
             className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded border border-sky-700/60 px-2 py-1 text-[12px] font-medium text-sky-200 hover:border-sky-500 hover:bg-sky-900/30 hover:text-sky-100 light:border-sky-400 light:text-sky-800 light:hover:border-sky-600 light:hover:bg-sky-100 light:hover:text-sky-900 md:min-h-0 md:px-1.5 md:py-0.5 md:text-[10px]"
-            title={`Open sub-agent session — ${parsed.results[0]!.sessionFile}`}
+            title={t("chatView.subagent.openTitle", {
+              path: String(parsed.results[0]!.sessionFile),
+            })}
           >
             <ExternalLink size={12} />
-            Open
+            {t("common.open")}
           </button>
         )}
       </div>
@@ -2455,8 +2522,8 @@ function SubagentResultCard({
       {argsText.length > 0 && (
         <details className="border-t border-sky-900/30">
           <summary className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-1 text-[11px] text-neutral-500 hover:text-neutral-300">
-            <span>Input</span>
-            <CopyButton getText={() => argsText} title="Copy subagent input" compact />
+            <span>{t("chatView.toolCall.input")}</span>
+            <CopyButton getText={() => argsText} title={t("chatView.subagent.copyInput")} compact />
           </summary>
           <pre className="overflow-auto px-2.5 pb-2 font-mono text-[11px] text-neutral-400">
             {argsText}
@@ -2472,8 +2539,12 @@ function SubagentResultCard({
           className="border-t border-sky-900/30"
         >
           <summary className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-1 text-[11px] text-neutral-500 hover:text-neutral-300">
-            <span>Output</span>
-            <CopyButton getText={() => outputText} title="Copy subagent output" compact />
+            <span>{t("chatView.toolCall.output")}</span>
+            <CopyButton
+              getText={() => outputText}
+              title={t("chatView.subagent.copyOutput")}
+              compact
+            />
           </summary>
           <pre className="overflow-auto px-2.5 pb-2 font-mono text-[11px] text-neutral-300 whitespace-pre-wrap">
             {outputText}
@@ -2491,6 +2562,7 @@ function SubagentResultRow({
   result: SubagentResult;
   onOpenFile: (sessionFile: string | undefined) => void;
 }) {
+  const t = useT();
   const failed = result.exitCode !== 0;
   return (
     <div
@@ -2503,7 +2575,7 @@ function SubagentResultRow({
           </span>
           {failed && (
             <span className="text-[10px] font-medium text-red-400 light:text-red-700">
-              exit {result.exitCode}
+              {t("chatView.exitCode", { code: result.exitCode })}
             </span>
           )}
         </div>
@@ -2520,7 +2592,7 @@ function SubagentResultRow({
           title={result.sessionFile}
         >
           <ExternalLink size={10} />
-          Open
+          {t("common.open")}
         </button>
       )}
     </div>
@@ -2528,17 +2600,20 @@ function SubagentResultRow({
 }
 
 function SubagentNotify({ message }: { message: AgentMessageLike }) {
-  const text = extractText(message).trim() || "Background subagent update";
+  const t = useT();
+  const text = extractText(message).trim() || t("chatView.subagentNotify.fallback");
   const firstLine = text.split(/\r?\n/, 1)[0]?.trim();
   const summary =
     firstLine && firstLine.length > 0
       ? firstLine.replace(/\*\*/g, "")
-      : "Background subagent update";
+      : t("chatView.subagentNotify.fallback");
   return (
     <details className="rounded border border-amber-700/40 bg-amber-950/30 text-xs text-amber-100 light:border-amber-300 light:bg-amber-50 light:text-amber-900">
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-amber-200 light:text-amber-800">
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="text-amber-400 light:text-amber-700">subagent</span>
+          <span className="text-amber-400 light:text-amber-700">
+            {t("chatView.subagentNotify.label")}
+          </span>
           <span className="truncate text-[11px]">{summary}</span>
         </span>
       </summary>
@@ -2550,6 +2625,7 @@ function SubagentNotify({ message }: { message: AgentMessageLike }) {
 }
 
 function BashExecution({ message }: { message: AgentMessageLike }) {
+  const t = useT();
   const command = String(message.command ?? "");
   const output = String(message.output ?? "");
   const exitCode = typeof message.exitCode === "number" ? message.exitCode : undefined;
@@ -2567,19 +2643,19 @@ function BashExecution({ message }: { message: AgentMessageLike }) {
           {excluded && (
             <span
               className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400"
-              title="!! prefix — kept out of LLM context on the next turn"
+              title={t("chatView.bashExecution.localOnlyTitle")}
             >
-              local-only
+              {t("chatView.bashExecution.localOnly")}
             </span>
           )}
           {cancelled && (
             <span className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800">
-              timed out
+              {t("chatView.bashExecution.timedOut")}
             </span>
           )}
           {truncated && !cancelled && (
             <span className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber-300 light:bg-amber-100 light:text-amber-800">
-              truncated
+              {t("chatView.bashExecution.truncated")}
             </span>
           )}
           {exitCode !== undefined && (
@@ -2589,9 +2665,13 @@ function BashExecution({ message }: { message: AgentMessageLike }) {
                   ? "bg-emerald-900/30 text-emerald-300 light:bg-emerald-100 light:text-emerald-800"
                   : "bg-red-900/30 text-red-300 light:bg-red-100 light:text-red-800"
               }`}
-              title={exitCode === 0 ? "exit 0" : `exit ${String(exitCode)}`}
+              title={
+                exitCode === 0
+                  ? t("chatView.bashExecution.exitZeroTitle")
+                  : t("chatView.exitCode", { code: exitCode })
+              }
             >
-              exit {exitCode}
+              {t("chatView.exitCode", { code: exitCode })}
             </span>
           )}
         </div>
@@ -2703,14 +2783,15 @@ function assistantTextContent(content: Record<string, unknown>[]): string {
 }
 
 function RawToggle({ showRaw, onToggle }: { showRaw: boolean; onToggle: (next: boolean) => void }) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={() => onToggle(!showRaw)}
       className="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:bg-neutral-700/40 hover:text-neutral-300 md:min-h-0 md:min-w-0"
-      title={showRaw ? "Show rendered markdown" : "Show raw text"}
+      title={showRaw ? t("chatView.rawToggle.showRendered") : t("chatView.rawToggle.showRaw")}
     >
-      {showRaw ? "rendered" : "raw"}
+      {showRaw ? t("chatView.rawToggle.rendered") : t("chatView.rawToggle.raw")}
     </button>
   );
 }
