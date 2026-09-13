@@ -69,7 +69,11 @@ const rawTranslator: Translator = createTranslator({
   onMissing: (key, locale) => {
     // Dev-only: a missing key is a translation gap, not a runtime bug.
     // English is the reference, so only gaps in OTHER locales warn.
-    if (locale !== "en" && import.meta.env.DEV) {
+    // `import.meta.env` only exists under Vite (it is how this app is built)
+    // — read it defensively so the module can also be imported from plain
+    // Node, which `tests/test-i18n.ts` does.
+    const isDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+    if (locale !== "en" && isDev) {
       console.warn(`[i18n] missing ${locale} translation for "${key}"`);
     }
   },
