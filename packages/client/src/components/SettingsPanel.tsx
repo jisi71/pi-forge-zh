@@ -29,7 +29,7 @@ import { THEME_DEFS, useThemeStore, type ThemeId } from "../lib/theme";
 // `useT` is the reactive translator used inside components. `translate`
 // (the module-level singleton) covers the few non-component helpers in
 // this file — they cannot call hooks, but they still need localized text.
-import { t as translate, useT, type TranslateKey } from "../i18n";
+import { t as translate, useT, type TFunction, type TranslateKey } from "../i18n";
 import { LanguagePicker } from "./LanguagePicker";
 import { createClientId } from "../lib/client-id";
 import { getStoredToken } from "../lib/auth-client";
@@ -363,7 +363,9 @@ function ProvidersTab({ onError }: { onError: (msg: string | undefined) => void 
                 </span>
                 {presence?.source !== undefined && (
                   <span className="text-[10px] text-neutral-500">
-                    {t("settings.providers.viaSource", { source: presence.source })}
+                    {t("settings.providers.viaSource", {
+                      source: credentialSourceLabel(presence.source, t),
+                    })}
                   </span>
                 )}
               </div>
@@ -2906,6 +2908,25 @@ function AppearanceTab() {
       </div>
     </div>
   );
+}
+
+/**
+ * `AuthStatus.source` values reported by the pi SDK (see auth-storage.d.ts).
+ * Mapped to locale keys with a raw fallback so an unrecognized future value
+ * still renders something meaningful instead of a blank.
+ */
+const CREDENTIAL_SOURCE_KEYS: Record<string, TranslateKey> = {
+  stored: "settings.credentialSource.stored",
+  runtime: "settings.credentialSource.runtime",
+  environment: "settings.credentialSource.environment",
+  fallback: "settings.credentialSource.fallback",
+  models_json_key: "settings.credentialSource.modelsJsonKey",
+  models_json_command: "settings.credentialSource.modelsJsonCommand",
+};
+
+function credentialSourceLabel(source: string, t: TFunction): string {
+  const key = CREDENTIAL_SOURCE_KEYS[source];
+  return key === undefined ? source : t(key);
 }
 
 /** Theme display names. Typed against the locale keys so a new theme id

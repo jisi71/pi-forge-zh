@@ -12,6 +12,16 @@ import type { DeepPartial } from "../../types";
 import type { EnMessages } from "../en";
 
 export const settings: DeepPartial<EnMessages["settings"]> = {
+  // pi SDK `AuthStatus.source` 的取值说明（来源：本地保存 / 环境变量 / 运行时注入…）
+  credentialSource: {
+    stored: "本地保存",
+    runtime: "运行时注入",
+    environment: "环境变量",
+    fallback: "内置回退",
+    modelsJsonKey: "models.json 密钥",
+    modelsJsonCommand: "models.json 命令",
+  },
+
   panel: {
     title: "设置",
     apiDocs: "API 文档 ↗",
