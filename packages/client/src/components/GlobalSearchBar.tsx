@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { api } from "../lib/api-client";
 import type { SessionSearchGroup, SessionSearchMatch } from "../lib/api-client";
 import { useT } from "../i18n";
+import { localizeSessionName } from "../lib/session-name";
 import { useIsMobile } from "../lib/use-is-mobile";
 import { useProjectStore } from "../store/project-store";
 import { useSessionStore } from "../store/session-store";
@@ -262,7 +263,7 @@ export function GlobalSearchBar() {
                       <>
                         <span className="mx-1.5 text-neutral-600">/</span>
                         <span className="text-neutral-400 normal-case tracking-normal">
-                          {group.sessionName}
+                          {localizeSessionName(group.sessionName, t)}
                         </span>
                       </>
                     )}
