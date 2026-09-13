@@ -114,7 +114,8 @@ const SAFE_ATTRIBUTE = /^(?:https?:\/\/|\/|#|mailto:|data:|_blank|noopener|noref
  * primitives (`ariaLabel=`, `emptyHint=`, `tooltip=`). Missing the camelCase
  * forms is how `ariaLabel="Resize project sidebar"` slipped through once.
  */
-const COPY_ATTRIBUTES = "title|placeholder|aria-label|aria-description|alt|ariaLabel|ariaDescription|emptyHint|tooltip|hint";
+const COPY_ATTRIBUTES =
+  "title|placeholder|aria-label|aria-description|alt|ariaLabel|ariaDescription|emptyHint|tooltip|hint";
 /** JSX text that is really code (generics, comparisons, operators). */
 const LOOKS_LIKE_CODE = /[=<>{}()[\];|&!*/+`]|\b(?:const|let|function|return|import|export)\b/;
 /** JSX text nodes that are pure technical identifiers (kebab/snake/CONSTANT). */
@@ -140,8 +141,13 @@ function isTechnicalLiteral(text: string): boolean {
     )
   )
     return true;
-  // A single bare token with no whitespace (feature/my-change, --flag, a/b)
-  if (/^[\w./:+-]+$/.test(text)) return true;
+  // Paths and refs: must contain a separator to qualify (feature/my-change, a/b)
+  if (/^[\w.:+-]*[/\\][\w./:+-]*$/.test(text)) return true;
+  // CLI flags
+  if (/^-{1,2}[\w-]+$/.test(text)) return true;
+  // Lowercase identifier-ish words (glob, retry, model) — a capitalized word
+  // like "Saved" is UI copy and must NOT be swallowed here.
+  if (/^[a-z][a-z0-9-]*$/.test(text)) return true;
   // Shell command lines (npm test, git rebase …)
   if (/^(?:npm|npx|pnpm|yarn|git|node|python3?|pip|make|docker|kubectl|cargo|go)\s/.test(text))
     return true;
@@ -150,6 +156,36 @@ function isTechnicalLiteral(text: string): boolean {
   return false;
 }
 
+function lineNumberAt(source: string, index: number): number {
+  let line = 1;
+  for (let i = 0; i < index && i < source.length; i += 1) {
+    if (source.charCodeAt(i) === 10) line += 1;
+  }
+  return line;
+}
+
+/** Is the given offset inside a `//` or block comment? (Heuristic.) */
+function inComment(source: string, index: number): boolean {
+  const lineStart = source.lastIndexOf("\n", index) + 1;
+  const before = source.slice(lineStart, index);
+  if (before.includes("//")) return true;
+  const open = source.lastIndexOf("/*", index);
+  const close = source.lastIndexOf("*/", index);
+  return open > close;
+}
+
+/**
+ * Heuristic scan for user-visible English that was not routed through `t()`.
+ *
+ * Scans the WHOLE file (not line by line) so a JSX text node that Prettier
+ * wrapped across several lines is still one match — that gap is how
+ * `ariaLabel="Resize project sidebar"` and the multi-line OTEL copy first
+ * slipped past a line-based version of this check.
+ *
+ * Known blind spots, covered by the runtime walkthrough instead:
+ *   - text assembled from a variable/ternary
+ *   - module-level lookup tables of labels
+ */
 function scanLiterals(): Missing["literals"] {
   const found: Missing["literals"] = [];
   for (const file of walk(CLIENT_SRC)) {
@@ -160,32 +196,52 @@ function scanLiterals(): Missing["literals"] {
     // Only audit files that already opted into i18n; files that have not
     // been migrated yet are tracked by the progress summary instead.
     if (!I18N_IMPORT.test(source)) continue;
-    const lines = source.split("\n");
-    lines.forEach((line, index) => {
-      const lineNo = index + 1;
-      const trimmed = line.trim();
-      if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) return;
-      // JSX text nodes: >text<
-      for (const match of line.matchAll(/>([^<>{}]+)</g)) {
-        const text = match[1]!.trim();
-        if (text.length < 3) continue;
-        if (!/[A-Za-z]{2}/.test(text)) continue;
-        if (LOOKS_LIKE_CODE.test(text)) continue;
-        if (TECHNICAL_TOKEN.test(text)) continue;
-        if (TS_GENERIC.test(text)) continue;
-        if (isTechnicalLiteral(text)) continue;
-        found.push({ file: rel, line: lineNo, text });
-      }
-      // User-visible attributes with a literal value.
-      for (const match of line.matchAll(new RegExp(`\\b(${COPY_ATTRIBUTES})="([^"]*)"`, "g"))) {
-        const text = match[2]!;
-        if (!/[A-Za-z]{2}/.test(text)) continue;
-        if (SAFE_ATTRIBUTE.test(text)) continue;
-        if (TECHNICAL_TOKEN.test(text)) continue;
-        if (isTechnicalLiteral(text)) continue;
-        found.push({ file: rel, line: lineNo, text: `${match[1]}="${text}"` });
-      }
-    });
+
+    /**
+     * `display` is what gets reported; `subject` is what gets classified.
+     * They differ for attributes, where the reported text is
+     * `ariaLabel="…"` (which contains `=` and would be filtered as code)
+     * while the classification must look at the value alone.
+     */
+    const push = (index: number, display: string, subject = display): void => {
+      if (subject.length < 3) return;
+      if (!/[A-Za-z]{3}/.test(subject)) return;
+      if (inComment(source, index)) return;
+      if (LOOKS_LIKE_CODE.test(subject)) return;
+      if (TECHNICAL_TOKEN.test(subject)) return;
+      if (TS_GENERIC.test(subject)) return;
+      if (isTechnicalLiteral(subject)) return;
+      found.push({
+        file: rel,
+        line: lineNumberAt(source, index),
+        text: display.replace(/\s+/g, " "),
+      });
+    };
+
+    // JSX text nodes: >text< — `[^<>{}]` spans newlines on purpose.
+    for (const match of source.matchAll(/>([^<>{}]+)</g)) {
+      push(match.index, match[1]!.trim());
+    }
+    // User-visible attributes with a literal value.
+    for (const match of source.matchAll(new RegExp(`\\b(${COPY_ATTRIBUTES})="([^"]*)"`, "g"))) {
+      const text = match[2]!;
+      if (!/[A-Za-z]{2}/.test(text)) continue;
+      if (SAFE_ATTRIBUTE.test(text)) continue;
+      push(match.index, `${match[1]}="${text}"`, text);
+    }
+    // Template literals containing an English sentence (>=3 words). These are
+    // usually error/banner copy built with an interpolated code.
+    for (const match of source.matchAll(/`([^`$]*?)`/g)) {
+      const text = match[1]!.trim();
+      if (!/^[A-Z][A-Za-z]*(?:\s+[A-Za-z'’,.:-]+){2,}/.test(text)) continue;
+      if (inComment(source, match.index)) continue;
+      if (isTechnicalLiteral(text)) continue;
+      found.push({
+        file: rel,
+        line: lineNumberAt(source, match.index),
+        text: `template: ${text.replace(/\s+/g, " ")}`,
+      });
+    }
   }
   return found;
 }
