@@ -30,6 +30,7 @@ export const chatView: DeepPartial<EnMessages["chatView"]> = {
     dismiss: "关闭此提示",
   },
   extensionNotification: {
+    levelLabel: "扩展 {level}",
     dismiss: "关闭扩展通知",
   },
   empty: {
@@ -117,6 +118,7 @@ export const chatView: DeepPartial<EnMessages["chatView"]> = {
 
   // 批量工具调用 -------------------------------------------------------
   toolBatch: {
+    childFailures: { other: "{count} 个子调用失败" },
     label: "工具",
     callCount: { other: "{count} 次调用" },
     inFlight: "{count} 个运行中…",

@@ -787,7 +787,7 @@ function ExtensionNotificationEntry({
     >
       <div className="min-w-0 flex-1">
         <div className="mb-1 text-[10px] font-medium uppercase tracking-wider opacity-75">
-          extension {notification.level}
+          {t("chatView.extensionNotification.levelLabel", { level: notification.level })}
         </div>
         <ChatMarkdown text={notification.message} size="xs" />
       </div>
@@ -1906,7 +1906,7 @@ function ToolCallBatchCard({ entries }: { entries: ToolBatchEntry[] }) {
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const countSummary = [...counts].map(([name, count]) => `${name} ×${count}`).join(" · ");
-  const failedChildLabel = `${failedChildCount} ${failedChildCount === 1 ? "child" : "children"} failed`;
+  const failedChildLabel = t.plural("chatView.toolBatch.childFailures", failedChildCount);
   const previews = toolEntries
     .map((e) => {
       const name = String(e.block.name ?? "tool");

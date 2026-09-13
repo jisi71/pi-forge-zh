@@ -12,8 +12,16 @@
 export const app = {
   nav: {
     openSidebar: "Open project sidebar",
+    resizeSidebar: "Resize project sidebar",
     closeSidebar: "Close project sidebar",
     settingsTooltip: "Settings (providers, agent defaults, MCP, skills)",
+  },
+
+  /** Warning badge shown while OTEL content capture is enabled server-side. */
+  telemetry: {
+    badge: "OTEL content capture on",
+    badgeTitle:
+      "OTEL_CAPTURE_CONTENT is on: message and tool content may be exported in telemetry.",
   },
 
   panes: {

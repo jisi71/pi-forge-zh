@@ -11,8 +11,15 @@ import type { EnMessages } from "../en";
 export const app: DeepPartial<EnMessages["app"]> = {
   nav: {
     openSidebar: "打开项目侧边栏",
+    resizeSidebar: "调整项目侧栏宽度",
     closeSidebar: "关闭项目侧边栏",
     settingsTooltip: "设置（提供商、代理默认值、MCP、技能）",
+  },
+
+  // 服务端开启 OTEL 内容捕获时显示的红字警示
+  telemetry: {
+    badge: "OTEL 内容捕获已开启",
+    badgeTitle: "OTEL_CAPTURE_CONTENT 已开启：消息与工具内容可能被导出到遥测数据中。",
   },
 
   panes: {

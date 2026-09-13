@@ -58,6 +58,8 @@ export const projects = {
 
   sessionRow: {
     untitled: "session {id}",
+    agentWorking: "Agent is working",
+    newResponse: "New response",
     childSessions: {
       one: "{count} child/worker session",
       other: "{count} child/worker sessions",

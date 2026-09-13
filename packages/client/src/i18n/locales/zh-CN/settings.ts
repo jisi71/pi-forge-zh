@@ -22,6 +22,17 @@ export const settings: DeepPartial<EnMessages["settings"]> = {
     modelsJsonCommand: "models.json 命令",
   },
 
+  telemetry: {
+    title: "遥测内容捕获",
+    description:
+      "运行时控制 OTEL_CAPTURE_CONTENT。启用后，完整的用户与助手消息内容、以及工具输入与结果都可能被导出到 OpenTelemetry。",
+    includeContent: "将消息与工具内容纳入遥测",
+    warning:
+      "仅在已获批准的数据留存策略下启用。被捕获的内容可能包含源代码、凭据、个人数据、附件文本以及 MCP / 工具返回结果。",
+    on: "已开启",
+    off: "已关闭",
+  },
+
   panel: {
     title: "设置",
     apiDocs: "API 文档 ↗",
@@ -419,6 +430,7 @@ export const settings: DeepPartial<EnMessages["settings"]> = {
     maxChars: "最大字符数",
     truncating: "已启用截断",
     passThrough: "不截断",
+    spoolingSaveFailed: "更新 MCP 结果暂存设置失败：{code}",
     spoolingTitle: "结果暂存",
     spoolingHint: "在截断前，把体积过大的成功 MCP 结果写入工作区文件。默认路径：",
     spoolingHintSuffix: "。",
@@ -484,6 +496,11 @@ export const settings: DeepPartial<EnMessages["settings"]> = {
     cwdPlaceholder: "（留空则用默认值：项目级服务器为项目路径）",
     disabledHint: "被禁用的服务器不会连接，也不会贡献工具。",
     headers: "请求头",
+    addHeader: "+ 请求头",
+    noHeadersLiteral: "暂无请求头。可以直接填写鉴权请求头，或引用环境变量，例如 MY_MCP_TOKEN。",
+    removeHeader: "移除该请求头",
+    envBackedNote: "引用环境变量的请求头只保存变量名，{brand} 在发送 MCP 请求时才解析其值。",
+    httpsCerts: "HTTPS 证书",
     headerSingular: "请求头",
     noHeaders: "没有请求头。需要鉴权时在此添加 `Authorization: Bearer …`。",
     env: "环境变量",

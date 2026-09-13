@@ -24,6 +24,17 @@ export const settings = {
     modelsJsonCommand: "models.json command",
   },
 
+  telemetry: {
+    title: "Telemetry content capture",
+    description:
+      "Controls OTEL_CAPTURE_CONTENT at runtime. When enabled, full user and assistant message content plus tool inputs/results may be exported to OpenTelemetry.",
+    includeContent: "Include message and tool content in telemetry",
+    warning:
+      "Enable only with an approved data-retention policy. Captured content can include source code, credentials, personal data, attachment text, and MCP/tool responses.",
+    on: "On",
+    off: "Off",
+  },
+
   panel: {
     title: "Settings",
     apiDocs: "API Docs ↗",
@@ -452,6 +463,7 @@ export const settings = {
     maxChars: "Max chars",
     truncating: "Truncating",
     passThrough: "Pass-through",
+    spoolingSaveFailed: "Failed to update MCP spooling: {code}",
     spoolingTitle: "Result spooling",
     spoolingHint:
       "Writes oversized successful MCP results to workspace files before truncation. Default:",
@@ -531,6 +543,13 @@ export const settings = {
     cwdPlaceholder: "(blank ↦ default: project path for project servers)",
     disabledHint: "Disabled servers don't connect or contribute tools.",
     headers: "Headers",
+    addHeader: "+ Header",
+    noHeadersLiteral:
+      "No headers. Add literal auth headers or reference an env var such as MY_MCP_TOKEN.",
+    removeHeader: "Remove header",
+    envBackedNote:
+      "Env-backed headers store only the variable name; {brand} resolves the value when sending MCP requests.",
+    httpsCerts: "HTTPS certs",
     headerSingular: "Header",
     noHeaders: "No headers. Add `Authorization: Bearer …` here for auth.",
     env: "Env",

@@ -3687,7 +3687,7 @@ function McpTab({ onError }: { onError: (msg: string | undefined) => void }) {
       setSpoolingDirectoryDraft(undefined);
       onError(undefined);
     } catch (err) {
-      onError(`Failed to update MCP spooling: ${errorCode(err)}`);
+      onError(t("settings.mcp.spoolingSaveFailed", { code: errorCode(err) }));
     } finally {
       setBusy(false);
     }
@@ -4529,7 +4529,7 @@ function McpDraftForm(props: {
               <option value="streamable-http">streamable-http</option>
               <option value="sse">sse</option>
             </select>
-            <label className="text-neutral-500">HTTPS certs</label>
+            <label className="text-neutral-500">{t("settings.mcpForm.httpsCerts")}</label>
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -4614,24 +4614,25 @@ function McpDraftForm(props: {
 }
 
 function HeaderRowsEditor(props: { rows: HeaderRow[]; onChange: (next: HeaderRow[]) => void }) {
+  const t = useT();
   const appName = useUiConfigStore((s) => s.appName);
   const { rows } = props;
   return (
     <div className="mt-3">
       <div className="mb-1 flex items-center justify-between">
         <h5 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-          Headers
+          {t("settings.mcpForm.headers")}
         </h5>
         <button
           onClick={() => props.onChange([...rows, { key: "", value: "", source: "literal" }])}
           className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-neutral-500"
         >
-          + Header
+          {t("settings.mcpForm.addHeader")}
         </button>
       </div>
       {rows.length === 0 && (
         <p className="text-[11px] italic text-neutral-600">
-          No headers. Add literal auth headers or reference an env var such as MY_MCP_TOKEN.
+          {t("settings.mcpForm.noHeadersLiteral")}
         </p>
       )}
       {rows.map((r, i) => (
@@ -4678,19 +4679,18 @@ function HeaderRowsEditor(props: { rows: HeaderRow[]; onChange: (next: HeaderRow
           <button
             onClick={() => props.onChange(rows.filter((_, j) => j !== i))}
             className="rounded border border-neutral-700 px-2 text-[11px] text-neutral-400 hover:text-red-300 light:hover:text-red-700"
-            title="Remove header"
+            title={t("settings.mcpForm.removeHeader")}
           >
             ×
           </button>
         </div>
       ))}
       <p className="mt-1 text-[10px] text-neutral-500">
-        Env-backed headers store only the variable name; {appName} resolves the value when sending
-        MCP requests.
+        {t("settings.mcpForm.envBackedNote", { brand: appName })}
       </p>
       {rows.some((r) => r.value === SECRET_PLACEHOLDER) && (
         <p className="mt-1 text-[10px] italic text-neutral-500">
-          Literal values with the redaction sentinel keep their stored value when you save.
+          {t("settings.secretRows.sentinelHint")}
         </p>
       )}
     </div>
@@ -4880,6 +4880,7 @@ function GeneralTab({ onError }: { onError: (msg: string | undefined) => void })
 }
 
 function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefined) => void }) {
+  const t = useT();
   const captureContent = useUiConfigStore((s) => s.telemetryCaptureContent);
   const setTelemetryCaptureContent = useUiConfigStore((s) => s.setTelemetryCaptureContent);
   const [saving, setSaving] = useState(false);
@@ -4923,12 +4924,9 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
     <section className="space-y-3 border-t border-neutral-800 pt-5">
       <div className="space-y-1">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-          Telemetry content capture
+          {t("settings.telemetry.title")}
         </h3>
-        <p className="max-w-3xl text-xs text-neutral-500">
-          Controls OTEL_CAPTURE_CONTENT at runtime. When enabled, full user and assistant message
-          content plus tool inputs/results may be exported to OpenTelemetry.
-        </p>
+        <p className="max-w-3xl text-xs text-neutral-500">{t("settings.telemetry.description")}</p>
       </div>
       <label className="flex max-w-3xl items-start gap-3 rounded-md border border-red-900/50 bg-red-950/20 p-3">
         <input
@@ -4940,12 +4938,9 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
         />
         <span className="space-y-1">
           <span className="block text-sm font-medium text-neutral-100">
-            Include message and tool content in telemetry
+            {t("settings.telemetry.includeContent")}
           </span>
-          <span className="block text-xs text-red-300/90">
-            Enable only with an approved data-retention policy. Captured content can include source
-            code, credentials, personal data, attachment text, and MCP/tool responses.
-          </span>
+          <span className="block text-xs text-red-300/90">{t("settings.telemetry.warning")}</span>
         </span>
       </label>
       <div className="flex items-center gap-2 text-xs">
@@ -4956,10 +4951,10 @@ function TelemetryCaptureSection({ onError }: { onError: (msg: string | undefine
               : "bg-neutral-800 text-neutral-400 light:bg-neutral-200 light:text-neutral-700"
           }`}
         >
-          {captureContent ? "On" : "Off"}
+          {captureContent ? t("settings.telemetry.on") : t("settings.telemetry.off")}
         </span>
-        {saving && <span className="text-neutral-500">saving…</span>}
-        {savedFlash && <span className="text-emerald-400">Saved.</span>}
+        {saving && <span className="text-neutral-500">{t("common.saving")}</span>}
+        {savedFlash && <span className="text-emerald-400">{t("common.saved")}</span>}
       </div>
     </section>
   );

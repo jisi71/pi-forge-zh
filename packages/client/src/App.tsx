@@ -604,9 +604,9 @@ export function App() {
           {telemetryCaptureContent && (
             <span
               className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm shadow-red-950/40"
-              title="OTEL_CAPTURE_CONTENT is on: message and tool content may be exported in telemetry."
+              title={t("app.telemetry.badgeTitle")}
             >
-              OTEL content capture on
+              {t("app.telemetry.badge")}
             </span>
           )}
           {/* MCP status badge stays visible in minimal — operators
@@ -720,7 +720,7 @@ export function App() {
               direction={1}
               minSize={MIN_PROJECTS_WIDTH}
               maxSize={projectsMaxWidth}
-              ariaLabel="Resize project sidebar"
+              ariaLabel={t("app.nav.resizeSidebar")}
             />
           )}
           <main className="flex flex-1 overflow-hidden">

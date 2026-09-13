@@ -49,6 +49,8 @@ export const projects: DeepPartial<EnMessages["projects"]> = {
 
   sessionRow: {
     untitled: "会话 {id}",
+    agentWorking: "代理正在工作",
+    newResponse: "有新回复",
     childSessions: { other: "{count} 个子会话/工作会话" },
     collapseChildren: "折叠子会话",
     expandChildren: "展开子会话",

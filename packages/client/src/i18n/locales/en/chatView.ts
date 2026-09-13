@@ -40,6 +40,8 @@ export const chatView = {
     dismiss: "Dismiss banner",
   },
   extensionNotification: {
+    /** `level` is an upstream enum value (info / warning / …) — kept verbatim. */
+    levelLabel: "extension {level}",
     dismiss: "Dismiss extension notification",
   },
   empty: {
@@ -128,6 +130,10 @@ export const chatView = {
 
   // Batched tool calls ------------------------------------------------
   toolBatch: {
+    childFailures: {
+      one: "{count} child failed",
+      other: "{count} children failed",
+    },
     label: "tools",
     callCount: {
       one: "{count} call",

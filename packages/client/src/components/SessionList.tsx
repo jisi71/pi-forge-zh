@@ -461,14 +461,14 @@ function SessionRow(props: SessionRowProps) {
         <LoaderCircle
           size={12}
           className="shrink-0 animate-spin text-cyan-400"
-          aria-label="Agent is working"
+          aria-label={t("projects.sessionRow.agentWorking")}
         />
       ) : hasUnreadResponse ? (
         <span
           className="forge-session-unread h-2 w-2 shrink-0 rounded-full bg-amber-400"
           role="status"
-          aria-label="New response"
-          title="New response"
+          aria-label={t("projects.sessionRow.newResponse")}
+          title={t("projects.sessionRow.newResponse")}
         />
       ) : (
         <span className="inline-block h-3 w-3 shrink-0" aria-hidden="true" />
