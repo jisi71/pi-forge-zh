@@ -6,6 +6,7 @@ import { ProjectPicker } from "./ProjectPicker";
 import { SessionList } from "./SessionList";
 import { Modal } from "./Modal";
 import { useUiConfigStore } from "../store/ui-config-store";
+import { useT } from "../i18n";
 
 export interface ProjectSidebarProps {
   /** Extra classes on the outer aside. Used by the App-level mobile
@@ -17,6 +18,7 @@ export interface ProjectSidebarProps {
 }
 
 export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = {}) {
+  const t = useT();
   const projects = useProjectStore((s) => s.projects);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const collapsed = useProjectStore((s) => s.collapsed);
@@ -156,19 +158,19 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
     >
       <header className="flex items-center justify-between border-b border-neutral-800 px-3 py-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-          Projects
+          {t("common.projects")}
         </span>
         <button
           onClick={() => setShowPicker(true)}
           className="rounded-md border border-neutral-700 px-2 py-0.5 text-xs text-neutral-200 hover:bg-neutral-800"
         >
-          + New
+          {t("projects.sidebar.new")}
         </button>
       </header>
 
       <div className="flex-1 overflow-y-auto py-1">
         {projects.length === 0 && (
-          <p className="px-3 py-4 text-sm text-neutral-500">No projects yet.</p>
+          <p className="px-3 py-4 text-sm text-neutral-500">{t("projects.sidebar.empty")}</p>
         )}
         {projects.map((p) => {
           const isActive = p.id === activeProjectId;
@@ -214,7 +216,7 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
               >
                 <span
                   className="flex cursor-grab items-center text-neutral-600 group-hover:text-neutral-400"
-                  title="Drag to reorder projects"
+                  title={t("projects.sidebar.dragToReorder")}
                   aria-hidden="true"
                 >
                   <GripVertical size={14} />
@@ -222,7 +224,7 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
                 <button
                   onClick={() => toggleCollapsed(p.id)}
                   className="flex items-center text-neutral-500 hover:text-neutral-300"
-                  title={isCollapsed ? "Expand" : "Collapse"}
+                  title={isCollapsed ? t("common.expand") : t("common.collapse")}
                 >
                   {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                 </button>
@@ -265,14 +267,14 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
                 <button
                   onClick={() => void handleNewSession(p.id)}
                   className="inline-flex p-1 text-neutral-500 hover:text-neutral-200"
-                  title="New session in this project"
+                  title={t("projects.sidebar.newSession")}
                 >
                   <Plus size={16} />
                 </button>
                 <button
                   onClick={() => handleDelete(p.id, p.name)}
                   className="inline-flex items-center p-1 text-neutral-500 hover:text-red-400"
-                  title="Delete project (blocked while live sessions exist)"
+                  title={t("projects.sidebar.deleteProject")}
                 >
                   <X size={16} />
                 </button>
@@ -288,7 +290,9 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
         open={deleteDialog !== undefined}
         onClose={() => setDeleteDialog(undefined)}
         title={
-          deleteDialog !== undefined ? `Delete project "${deleteDialog.name}"` : "Delete project"
+          deleteDialog !== undefined
+            ? t("projects.deleteDialog.titleNamed", { name: deleteDialog.name })
+            : t("projects.deleteDialog.title")
         }
       >
         {deleteDialog !== undefined &&
@@ -300,24 +304,28 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
             return (
               <div className="flex flex-col gap-3 px-4 py-3">
                 <p className="text-xs text-neutral-300">
-                  Remove "{deleteDialog.name}" from {appName}.
+                  {t("projects.deleteDialog.removeSummary", {
+                    name: deleteDialog.name,
+                    appName,
+                  })}
                 </p>
                 <ul className="ml-4 list-disc space-y-0.5 text-[11px] text-neutral-400">
                   <li>
-                    Project record + the project's session directory (
+                    {t("projects.deleteDialog.recordPrefix")}
                     <code className="font-mono text-[10px] text-neutral-400">
                       .pi/sessions/{deleteDialog.id}/
                     </code>
-                    ) will be deleted.
+                    {t("projects.deleteDialog.recordSuffix")}
                   </li>
                   {deleteDialog.liveCount > 0 && (
                     <li>
-                      {deleteDialog.liveCount} live session
-                      {deleteDialog.liveCount === 1 ? "" : "s"} will be disposed first.
+                      {t.plural("projects.deleteDialog.liveSessionsFirst", deleteDialog.liveCount)}
                     </li>
                   )}
                   <li>
-                    The project's workspace folder on disk is <strong>not</strong> touched.
+                    {t("projects.deleteDialog.workspaceUntouchedPrefix")}
+                    <strong>{t("projects.deleteDialog.workspaceUntouchedNot")}</strong>
+                    {t("projects.deleteDialog.workspaceUntouchedSuffix")}
                   </li>
                 </ul>
                 {requiresAck && (
@@ -333,14 +341,19 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
                       className="mt-0.5 h-3 w-3"
                     />
                     <span>
-                      Yes, I understand this will delete {totalSessions} session
-                      {totalSessions === 1 ? "" : "s"}
+                      {t("projects.deleteDialog.ackPrefix")}
+                      {t.plural("projects.deleteDialog.ackSessions", totalSessions)}
                       {deleteDialog.liveCount > 0 && deleteDialog.onDiskCount > 0
-                        ? ` (${deleteDialog.liveCount} live, ${deleteDialog.onDiskCount} on disk)`
+                        ? t("projects.deleteDialog.ackLiveAndOnDisk", {
+                            live: deleteDialog.liveCount,
+                            onDisk: deleteDialog.onDiskCount,
+                          })
                         : deleteDialog.liveCount > 0
-                          ? ` (${deleteDialog.liveCount} live)`
+                          ? t("projects.deleteDialog.ackLiveOnly", {
+                              live: deleteDialog.liveCount,
+                            })
                           : ""}
-                      . This can't be undone.
+                      {t("projects.deleteDialog.ackSuffix")}
                     </span>
                   </label>
                 )}
@@ -351,7 +364,7 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
                     disabled={deleteDialog.submitting}
                     className="rounded-md border border-neutral-700 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="button"
@@ -359,7 +372,7 @@ export function ProjectSidebar({ className = "", style }: ProjectSidebarProps = 
                     disabled={!canSubmit}
                     className="rounded-md bg-red-700 px-3 py-1 text-xs font-medium text-red-50 hover:bg-red-600 disabled:opacity-50 disabled:hover:bg-red-700"
                   >
-                    {deleteDialog.submitting ? "Deleting…" : "Delete"}
+                    {deleteDialog.submitting ? t("common.deleting") : t("common.delete")}
                   </button>
                 </footer>
               </div>

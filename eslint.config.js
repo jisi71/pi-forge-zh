@@ -77,6 +77,19 @@ export default tseslint.config(
     },
   },
   {
+    // Node tooling that lives outside every app tsconfig (the i18n audit
+    // runs through tsx). Lint it, but without type-aware rules — there is
+    // no TS project to hang them off. Type checking for these files is
+    // covered by scripts/tsconfig.json in `npm run typecheck`.
+    files: ["scripts/**/*.{ts,mts}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { ...globals.node },
+    },
+    ...tseslint.configs.disableTypeChecked,
+  },
+  {
     files: ["packages/client/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,

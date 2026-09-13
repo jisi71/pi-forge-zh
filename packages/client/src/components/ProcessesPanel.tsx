@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "../lib/api-client";
 import { getStoredToken } from "../lib/auth-client";
+import { useT } from "../i18n";
 import {
   countRunning,
   LIVE_STATUSES,
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function ProcessesPanel({ sessionId }: Props) {
+  const t = useT();
   const processes = useProcessesStore((s) => selectProcesses(s, sessionId));
   const watches = useProcessesStore((s) => selectWatches(s, sessionId));
   const setProcesses = useProcessesStore((s) => s.setProcesses);
@@ -88,10 +90,10 @@ export function ProcessesPanel({ sessionId }: Props) {
     <div className="forge-processes-panel flex h-full flex-col overflow-hidden bg-neutral-950 text-neutral-200 light:bg-white light:text-neutral-900">
       <header className="flex items-center gap-2 border-b border-neutral-800 px-3 py-1.5 text-xs light:border-neutral-200">
         <span className="font-semibold uppercase tracking-wider text-neutral-400 light:text-neutral-600">
-          Processes
+          {t("terminal.processes.title")}
         </span>
         <span className="text-neutral-500 light:text-neutral-600">
-          {running} running · {finished} finished
+          {t("terminal.processes.counts", { running, finished })}
         </span>
         <div className="flex-1" />
         {finished > 0 && (
@@ -100,10 +102,10 @@ export function ProcessesPanel({ sessionId }: Props) {
             onClick={() => void onClearFinished()}
             disabled={busyClear}
             className="flex items-center gap-1 rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400 hover:border-neutral-500 hover:text-neutral-200 disabled:opacity-50 light:border-neutral-400 light:text-neutral-600"
-            title="Drop all FINISHED processes from the list (running ones stay)"
+            title={t("terminal.processes.clearFinishedTooltip")}
           >
             <Trash2 size={10} />
-            Clear finished
+            {t("terminal.processes.clearFinished")}
           </button>
         )}
       </header>
@@ -124,7 +126,7 @@ export function ProcessesPanel({ sessionId }: Props) {
             ))}
             {watches.length > 3 && (
               <div className="text-neutral-500 light:text-neutral-600">
-                +{watches.length - 3} more watch match(es)
+                {t.plural("terminal.processes.watchMore", watches.length - 3)}
               </div>
             )}
           </div>
@@ -132,7 +134,7 @@ export function ProcessesPanel({ sessionId }: Props) {
             type="button"
             onClick={() => clearWatches(sessionId)}
             className="rounded p-0.5 text-amber-300 hover:text-amber-100 light:text-amber-700 light:hover:text-amber-900"
-            title="Clear watch alerts"
+            title={t("terminal.processes.clearWatchAlerts")}
           >
             <RotateCcw size={11} />
           </button>
@@ -141,22 +143,29 @@ export function ProcessesPanel({ sessionId }: Props) {
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {processes.length === 0 ? (
           <p className="px-1 text-[11px] italic text-neutral-500 light:text-neutral-600">
-            No background processes yet. The agent will add them here when it starts dev servers,
-            test watchers, builds, etc.
+            {t("terminal.processes.empty")}
           </p>
         ) : (
           <div className="space-y-2">
             {grouped.live.length > 0 && (
-              <ProcessGroup label="Running" items={grouped.live} sessionId={sessionId} />
+              <ProcessGroup
+                label={t("common.running")}
+                items={grouped.live}
+                sessionId={sessionId}
+              />
             )}
             {grouped.finished.length > 0 && (
-              <ProcessGroup label="Finished" items={grouped.finished} sessionId={sessionId} />
+              <ProcessGroup
+                label={t("terminal.processes.groupFinished")}
+                items={grouped.finished}
+                sessionId={sessionId}
+              />
             )}
           </div>
         )}
       </div>
       <footer className="border-t border-neutral-800 px-3 py-1 text-[10px] italic text-neutral-500 light:border-neutral-200 light:text-neutral-600">
-        In-memory only — processes don&apos;t survive a server restart.
+        {t("terminal.processes.footer")}
       </footer>
     </div>
   );
@@ -199,6 +208,7 @@ function ProcessGroup({
 }
 
 function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: string }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [output, setOutput] = useState<
     | {
@@ -239,7 +249,7 @@ function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: s
     setActionErr(undefined);
     try {
       const r = await api.killProcess(sessionId, process.id);
-      if (!r.ok) setActionErr(r.reason ?? "kill failed");
+      if (!r.ok) setActionErr(r.reason ?? t("terminal.processes.killFailed"));
       // Defensive refetch — SSE process_update fans out the state
       // change automatically, but if the user's browser dropped a
       // frame (backpressure, paused tab, proxy buffering) the UI
@@ -302,7 +312,9 @@ function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: s
         <div className="mt-1 space-y-1 pl-[24px]">
           <div className="flex items-center gap-2 text-[10px] text-neutral-500 light:text-neutral-600">
             <span>PID {process.pid}</span>
-            {process.exitCode !== null && <span>exit {process.exitCode}</span>}
+            {process.exitCode !== null && (
+              <span>{t("terminal.processes.exitCode", { code: process.exitCode })}</span>
+            )}
             <div className="flex-1" />
             {isLive && (
               <button
@@ -312,7 +324,7 @@ function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: s
                 className="flex items-center gap-1 rounded border border-red-700/40 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-900/40 disabled:opacity-50 light:border-red-400 light:text-red-700 light:hover:bg-red-100"
               >
                 <XCircle size={10} />
-                Kill
+                {t("terminal.processes.kill")}
               </button>
             )}
           </div>
@@ -322,7 +334,7 @@ function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: s
           {output !== undefined && output.stdout.length > 0 && (
             <details className="rounded bg-neutral-950 light:bg-white">
               <summary className="cursor-pointer px-1 py-0.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300 light:text-neutral-600 light:hover:text-neutral-900">
-                stdout (tail)
+                {t("terminal.processes.stdoutTail")}
               </summary>
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap px-1.5 py-1 font-mono text-[10px] text-neutral-300 light:text-neutral-800">
                 {output.stdout.join("\n")}
@@ -332,7 +344,7 @@ function ProcessRow({ process, sessionId }: { process: ProcessInfo; sessionId: s
           {output !== undefined && output.stderr.length > 0 && (
             <details className="rounded bg-neutral-950 light:bg-white">
               <summary className="cursor-pointer px-1 py-0.5 text-[10px] uppercase tracking-wider text-neutral-500 hover:text-neutral-300 light:text-neutral-600 light:hover:text-neutral-900">
-                stderr (tail)
+                {t("terminal.processes.stderrTail")}
               </summary>
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap px-1.5 py-1 font-mono text-[10px] text-red-300 light:text-red-700">
                 {output.stderr.join("\n")}
@@ -360,12 +372,13 @@ function borderForStatus(status: ProcessStatus): string {
 }
 
 function StatusIcon({ status, success }: { status: ProcessStatus; success: boolean | null }) {
+  const t = useT();
   if (status === "running")
     return (
       <Loader2
         size={11}
         className="mt-0.5 shrink-0 animate-spin text-emerald-400 light:text-emerald-700"
-        aria-label="running"
+        aria-label={t("terminal.processes.status.running")}
       />
     );
   if (status === "terminating" || status === "terminate_timeout")
@@ -373,7 +386,7 @@ function StatusIcon({ status, success }: { status: ProcessStatus; success: boole
       <Zap
         size={11}
         className="mt-0.5 shrink-0 text-amber-400 light:text-amber-700"
-        aria-label="terminating"
+        aria-label={t("terminal.processes.status.terminating")}
       />
     );
   if (status === "killed")
@@ -381,7 +394,7 @@ function StatusIcon({ status, success }: { status: ProcessStatus; success: boole
       <AlertTriangle
         size={11}
         className="mt-0.5 shrink-0 text-amber-400 light:text-amber-700"
-        aria-label="killed"
+        aria-label={t("terminal.processes.status.killed")}
       />
     );
   if (success === true)
@@ -389,14 +402,14 @@ function StatusIcon({ status, success }: { status: ProcessStatus; success: boole
       <CheckCircle2
         size={11}
         className="mt-0.5 shrink-0 text-emerald-400 light:text-emerald-700"
-        aria-label="exited 0"
+        aria-label={t("terminal.processes.status.exitedZero")}
       />
     );
   return (
     <XCircle
       size={11}
       className="mt-0.5 shrink-0 text-red-400 light:text-red-700"
-      aria-label="exited non-zero"
+      aria-label={t("terminal.processes.status.exitedNonZero")}
     />
   );
 }
@@ -448,6 +461,7 @@ function FullLogLink({
   processId: string;
   stream: "stdout" | "stderr";
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>(undefined);
   const onClick = (): void => {
@@ -476,7 +490,7 @@ function FullLogLink({
       // Even the synchronous open got blocked (some strict popup
       // configurations). Surface the failure rather than the
       // earlier behavior of stealing the current tab.
-      setErr("popup blocked — allow popups for this site");
+      setErr(t("terminal.processes.popupBlocked"));
       return;
     }
     setBusy(true);
@@ -548,7 +562,11 @@ function FullLogLink({
       className="text-sky-400 hover:underline disabled:opacity-50 light:text-sky-700"
       title={err}
     >
-      {busy ? "loading…" : err !== undefined ? `${stream}: ${err}` : `full ${stream} log`}
+      {busy
+        ? t("terminal.processes.loadingLog")
+        : err !== undefined
+          ? `${stream}: ${err}`
+          : t("terminal.processes.fullLog", { stream })}
     </button>
   );
 }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api, ApiError, type SessionSummary, type UnifiedSession } from "../lib/api-client";
 import { streamSSE } from "../lib/sse-client";
+import { t } from "../i18n";
 import { extractToolCallGeneration, type ToolCallGeneration } from "../lib/tool-call-streaming";
 import { createChatTimelinePosition, type ChatTimelinePosition } from "../lib/chat-timeline";
 import { postCrossTab, subscribeCrossTab } from "../lib/cross-tab";
@@ -203,7 +204,7 @@ function findProjectIdForSession(state: SessionState, sessionId: string): string
 }
 
 function readOnlyExternalBanner(state?: string): string {
-  return `Read-only: pi-subagents child is ${state ?? "running"} externally`;
+  return t("errors.session.readOnlyExternal", { state: state ?? "running" });
 }
 
 function removeSessionFromState(current: SessionState, sessionId: string): Partial<SessionState> {
@@ -678,7 +679,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           set((s) => ({
             bannerBySession: {
               ...s.bannerBySession,
-              [sessionId]: `read-only snapshot failed: ${code}`,
+              [sessionId]: t("errors.session.readOnlySnapshotFailed", { code }),
             },
           }));
         });
@@ -725,7 +726,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set((s) => ({
           bannerBySession: {
             ...s.bannerBySession,
-            [sessionId]: `Reconnecting (attempt ${attempt}, ${Math.round(delayMs / 1000)}s) — ${reason}`,
+            [sessionId]: t("errors.session.reconnecting", {
+              attempt,
+              seconds: Math.round(delayMs / 1000),
+              reason,
+            }),
           },
         }));
       },
@@ -761,7 +766,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }
       const code = err instanceof ApiError ? err.code : (err as Error).message;
       set((s) => ({
-        bannerBySession: { ...s.bannerBySession, [sessionId]: `stream error: ${code}` },
+        bannerBySession: {
+          ...s.bannerBySession,
+          [sessionId]: t("errors.session.streamError", { code }),
+        },
       }));
       onTerminate();
     });
@@ -857,8 +865,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             ...s.bannerBySession,
             [sessionId]:
               err instanceof ApiError
-                ? `prompt rejected: ${err.code}${err.message !== `${err.status} ${err.code}` ? ` — ${err.message}` : ""}`
-                : `prompt rejected: ${(err as Error).message}`,
+                ? err.message !== `${err.status} ${err.code}`
+                  ? t("errors.session.promptRejectedWithMessage", {
+                      code: err.code,
+                      message: err.message,
+                    })
+                  : t("errors.session.promptRejected", { code: err.code })
+                : t("errors.session.promptRejectedMessage", {
+                    message: (err as Error).message,
+                  }),
           },
         };
       });
@@ -1031,7 +1046,9 @@ function applyEvent(
     // assistant message.
     const agentErr = (event as { errorMessage?: unknown }).errorMessage;
     const errorBanner =
-      typeof agentErr === "string" && agentErr.length > 0 ? `Agent error: ${agentErr}` : undefined;
+      typeof agentErr === "string" && agentErr.length > 0
+        ? t("errors.session.agentError", { message: agentErr })
+        : undefined;
     // Refetch authoritative messages, then clear streaming state. Order
     // matters — the messages array must be in place before the renderer
     // drops the streamingText bubble or we'd see a momentary gap.
@@ -1093,8 +1110,7 @@ function applyEvent(
             ...s.bannerBySession,
             // If the agent reported an error, that's the more useful
             // message to show; otherwise surface the refetch failure.
-            [sessionId]:
-              errorBanner ?? "Couldn't refresh messages after the agent finished — reload to sync",
+            [sessionId]: errorBanner ?? t("errors.session.refreshAfterAgentFailed"),
           },
           agentEndCountBySession: {
             ...s.agentEndCountBySession,
@@ -1251,7 +1267,10 @@ function applyEvent(
         const m = typeof msg.errorMessage === "string" ? msg.errorMessage : "";
         if (m.length > 0) {
           set((s) => ({
-            bannerBySession: { ...s.bannerBySession, [sessionId]: `Agent error: ${m}` },
+            bannerBySession: {
+              ...s.bannerBySession,
+              [sessionId]: t("errors.session.agentError", { message: m }),
+            },
           }));
         }
       }
@@ -1399,7 +1418,7 @@ function applyEvent(
 
   if (event.type === "compaction_start") {
     set((s) => ({
-      bannerBySession: { ...s.bannerBySession, [sessionId]: "Compacting context…" },
+      bannerBySession: { ...s.bannerBySession, [sessionId]: t("errors.session.compacting") },
     }));
     return;
   }
@@ -1415,7 +1434,7 @@ function applyEvent(
     const compactErr = (event as { errorMessage?: unknown }).errorMessage;
     const errorBanner =
       typeof compactErr === "string" && compactErr.length > 0
-        ? `Agent error: ${compactErr}`
+        ? t("errors.session.agentError", { message: compactErr })
         : undefined;
     set((s) => ({
       bannerBySession: { ...s.bannerBySession, [sessionId]: errorBanner },
@@ -1451,7 +1470,7 @@ function applyEvent(
     set((s) => ({
       bannerBySession: {
         ...s.bannerBySession,
-        [sessionId]: `Retrying (${attempt}/${max})…`,
+        [sessionId]: t("errors.session.retrying", { attempt, max }),
       },
     }));
     return;
@@ -1465,7 +1484,7 @@ function applyEvent(
     const finalErr = (event as { finalError?: unknown }).finalError;
     const errorBanner =
       !succeeded && typeof finalErr === "string" && finalErr.length > 0
-        ? `Agent error: ${finalErr}`
+        ? t("errors.session.agentError", { message: finalErr })
         : undefined;
     set((s) => ({
       bannerBySession: { ...s.bannerBySession, [sessionId]: errorBanner },

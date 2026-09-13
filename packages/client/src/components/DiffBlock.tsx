@@ -10,6 +10,7 @@ import {
 } from "react-diff-view";
 import "react-diff-view/style/index.css";
 import { highlightHunks, languageForFile } from "../lib/diff-highlight";
+import { useT } from "../i18n";
 
 /**
  * Optional per-hunk action handler. When supplied, DiffBlock renders
@@ -205,6 +206,7 @@ function FileDiff({
   viewType: "unified" | "split";
   renderGutter: RenderGutter;
 } & HunkActionProps) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   // Filename for syntax-highlighter selection. The diff header
   // uses `a/<path>` and `b/<path>` conventionally; strip the
@@ -258,7 +260,7 @@ function FileDiff({
                 <Decoration key={`dec-${hunk.content}`}>
                   <div className="relative flex items-center justify-between gap-2 border-y border-blue-700/30 bg-blue-950/30 py-px leading-none light:border-blue-300 light:bg-blue-50">
                     <span className="sticky left-0 z-10 bg-blue-950 px-2 py-px text-[9px] uppercase tracking-wider text-blue-400 light:bg-blue-100 light:text-blue-700">
-                      Hunk {idx + 1}
+                      {t("chatView.diffBlock.hunkLabel", { number: idx + 1 })}
                     </span>
                     <button
                       type="button"
@@ -266,7 +268,7 @@ function FileDiff({
                       disabled={hunkActionDisabled === true}
                       className="sticky right-1 z-10 rounded border border-blue-500/60 bg-blue-900 px-1.5 py-px text-[10px] text-blue-100 hover:border-blue-400 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 light:border-blue-500 light:bg-blue-200 light:text-blue-900 light:hover:border-blue-600 light:hover:bg-blue-300"
                     >
-                      {hunkActionLabel ?? "Apply hunk"}
+                      {hunkActionLabel ?? t("chatView.diffBlock.applyHunk")}
                     </button>
                   </div>
                 </Decoration>,
@@ -281,9 +283,15 @@ function FileDiff({
         <button
           onClick={() => setExpanded(true)}
           className="my-1 w-full rounded border border-neutral-700 bg-neutral-900/60 px-3 py-1 text-[11px] text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900"
-          title={`Showing ~${LARGE_FILE_LINE_THRESHOLD} of ${totalChanges} lines — large diffs slow the renderer; click to render the rest.`}
+          title={t("chatView.diffBlock.largeDiffTitle", {
+            shown: LARGE_FILE_LINE_THRESHOLD,
+            total: totalChanges,
+          })}
         >
-          Show all ({totalChanges} lines, {file.hunks.length} hunks)
+          {t("chatView.diffBlock.showAll", {
+            lines: totalChanges,
+            hunks: file.hunks.length,
+          })}
         </button>
       )}
     </>

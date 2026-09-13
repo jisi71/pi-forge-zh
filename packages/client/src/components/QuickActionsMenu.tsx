@@ -12,6 +12,7 @@ import { createChatTimelinePosition } from "../lib/chat-timeline";
 import { useSessionStore } from "../store/session-store";
 import { useComposerStore } from "../store/composer-store";
 import { createClientId } from "../lib/client-id";
+import { useT } from "../i18n";
 
 /**
  * Toolbar chip rendered in `ChatView`'s top bar (left-aligned). Two
@@ -47,6 +48,7 @@ function randomId(): string {
 }
 
 export function QuickActionsMenu({ sessionId, projectId }: Props) {
+  const t = useT();
   const loaded = useQuickActionsStore((s) => s.loaded);
   const actions = useQuickActionsStore((s) => s.actions);
   const minimal = useUiConfigStore((s) => s.minimal);
@@ -152,14 +154,14 @@ export function QuickActionsMenu({ sessionId, projectId }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
         className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 light:text-neutral-600 light:hover:bg-neutral-200 light:hover:text-neutral-900"
-        title="Run a saved quick action"
+        title={t("chatInput.quickActions.runTitle")}
       >
         <Zap size={11} />
-        Actions
+        {t("chatInput.quickActions.label")}
         {totalInFlight > 0 && (
           <span
             className="ml-0.5 flex items-center gap-0.5 rounded bg-amber-700/40 px-1 text-[9px] normal-case text-amber-100 light:bg-amber-200 light:text-amber-900"
-            title={`${totalInFlight} action${totalInFlight === 1 ? "" : "s"} running`}
+            title={t.plural("chatInput.quickActions.runningCount", totalInFlight)}
           >
             <Loader2 size={9} className="animate-spin" />
             {totalInFlight}
@@ -185,7 +187,9 @@ export function QuickActionsMenu({ sessionId, projectId }: Props) {
                 title={
                   isCmd
                     ? (action.command ?? "")
-                    : `${action.mode === "insert" ? "Insert" : "Send"}: ${action.text ?? ""}`
+                    : action.mode === "insert"
+                      ? t("chatInput.quickActions.insertPreview", { text: action.text ?? "" })
+                      : t("chatInput.quickActions.sendPreview", { text: action.text ?? "" })
                 }
               >
                 <Icon

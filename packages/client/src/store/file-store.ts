@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { api, ApiError, type FileTreeNode } from "../lib/api-client";
 import { parseUnifiedDiff, type DiffLine } from "../lib/diff-parser";
 import { createClientId } from "../lib/client-id";
+import { t } from "../i18n";
 
 /**
  * Per-tab editor state. Tracks an in-memory `draft` separately from
@@ -397,7 +398,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         saving: false,
         savedAt: undefined,
         saveError: undefined,
-        loadingError: r.binary ? "Binary file — open externally to edit." : undefined,
+        loadingError: r.binary ? t("errors.file.binaryFile") : undefined,
       };
       if (nav !== undefined) tab.pendingNav = nav;
       set((s) => {
@@ -539,7 +540,7 @@ export const useFileStore = create<FileState>((set, get) => ({
                 dirty: false,
                 language: r.language,
                 binary: r.binary,
-                loadingError: r.binary ? "Binary file — open externally to edit." : undefined,
+                loadingError: r.binary ? t("errors.file.binaryFile") : undefined,
               }
             : f,
         ),
@@ -594,7 +595,7 @@ export const useFileStore = create<FileState>((set, get) => ({
                   dirty: false,
                   language: r.language,
                   binary: r.binary,
-                  loadingError: r.binary ? "Binary file — open externally to edit." : undefined,
+                  loadingError: r.binary ? t("errors.file.binaryFile") : undefined,
                 }
               : f,
           );

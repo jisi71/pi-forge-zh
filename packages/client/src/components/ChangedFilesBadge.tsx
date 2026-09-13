@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileDiff } from "lucide-react";
 import { api, ApiError } from "../lib/api-client";
 import { useSessionStore } from "../store/session-store";
+import { useT } from "../i18n";
 
 /**
  * Inline button under ChatView showing "N file(s) edited" whenever
@@ -26,6 +27,7 @@ export function ChangedFilesBadge({
 }) {
   const isStreaming = useSessionStore((s) => s.streamingBySession[sessionId] ?? false);
   const agentEndCount = useSessionStore((s) => s.agentEndCountBySession[sessionId] ?? 0);
+  const t = useT();
 
   const [count, setCount] = useState<number>(0);
 
@@ -71,11 +73,11 @@ export function ChangedFilesBadge({
         <button
           onClick={onOpen}
           className="flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
-          title="Open the Last turn pane to review what the agent just wrote"
+          title={t("app.changedFiles.tooltip")}
         >
           <FileDiff size={12} />
-          {count === 1 ? "1 file edited" : `${count} files edited`}
-          <span className="text-[10px] text-neutral-500">— review</span>
+          {t.plural("app.changedFiles.edited", count)}
+          <span className="text-[10px] text-neutral-500">{t("app.changedFiles.review")}</span>
         </button>
       </div>
     </div>
