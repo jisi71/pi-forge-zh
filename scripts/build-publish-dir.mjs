@@ -256,7 +256,6 @@ copyright retained. See the repository README for the English documentation.
 `;
 }
 
-
 main().catch((err) => {
   console.error("[build-publish-dir] failed:", err);
   process.exit(1);
