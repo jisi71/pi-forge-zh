@@ -24,6 +24,9 @@ unchanged.
 
 ### Added
 
+- **Chinese-first documentation.** `README.zh-CN.md` is the Chinese introduction
+  (install, first run, model setup, panel tour, FAQ, data locations), and the
+  README published to npm leads with Chinese and ends with an English summary.
 - **Simplified Chinese interface.** A zero-dependency i18n layer
   (`packages/client/src/i18n/`) with per-area `en` and `zh-CN` locale files.
   English is the reference locale: it defines the key set, it is the source of

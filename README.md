@@ -1,3 +1,5 @@
+[English](./README.md) | **[简体中文](./README.zh-CN.md)**
+
 <p align="center">
   <img src="docs/images/icon.png" alt="pi-forge-zh" width="120" height="120"/>
 </p>

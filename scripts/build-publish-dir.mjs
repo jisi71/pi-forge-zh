@@ -157,112 +157,105 @@ function relativeFromRoot(p) {
 }
 
 function buildPublishReadme(version) {
-  // Consumer-facing README. The in-repo README targets contributors; npm users
-  // want install/run/configure and an honest statement of what this fork is.
+  // npm only renders README.md, and the audience for this package is Chinese
+  // speakers, so the published readme leads with Chinese and ends with a short
+  // English summary. The in-repo README.zh-CN.md is the same material with more
+  // screenshots and detail.
   return `# pi-forge-zh
 
-**Simplified Chinese** interface for
-[pi-forge](https://github.com/Devin-Marks/pi-forge) — a self-hosted browser UI for the
-[pi coding agent](https://github.com/earendil-works/pi).
+**pi 编码代理的中文网页工作台。** 在浏览器里跟 AI 结对写代码：聊天、看文件、开终端、审 diff、连 Git —— 全在一个页面里，界面是简体中文。
 
-> **This is a community fork.** Upstream \`pi-forge\` was
-> [archived](https://github.com/Devin-Marks/pi-forge) on 2026-09-16, so the project is no
-> longer maintained there. This build is \`pi-forge-zh@${version}\`, based on the last
-> upstream release (\`v1.5.4\`), and adds a source-level i18n layer with \`en\` and
-> \`zh-CN\` locales. Upstream copyright and the MIT license are retained — see
-> [LICENSE](./LICENSE).
+> **这是社区 fork。** 上游 [pi-forge](https://github.com/Devin-Marks/pi-forge) 已于 2026-09-16 归档、不再维护。本包基于上游最后一个版本 (\`v1.5.4\`)，加上完整简体中文界面。当前版本 \`pi-forge-zh@${version}\`。上游 MIT 版权与许可原样保留（见 LICENSE）。
 
-## Install
+## 安装
 
 \`\`\`bash
-# One-shot
-npx pi-forge-zh
+npx pi-forge-zh            # 一条命令试用
 
-# Or install globally
-npm i -g pi-forge-zh
+npm i -g pi-forge-zh       # 或全局安装
 pi-forge-zh
 \`\`\`
 
-Open <http://localhost:3000> and pick a workspace folder. The interface follows your
-browser language (\`zh*\` → Chinese, otherwise English).
+打开 <http://localhost:3000>，选一个工作目录就能用。（需要 Node ≥ 20。）
 
-## Language
+## 必须先配置模型
 
-| | |
-|---|---|
-| Follow the browser | default |
-| Force Chinese | <http://localhost:3000/?lang=zh-CN> |
-| Force English | <http://localhost:3000/?lang=en> |
-| Switch live | **Settings → Appearance → Language** (stored in the browser only) |
+它只是界面，模型能力来自 pi —— 不配模型就只能看界面、聊不了。最省事的方式是在网页里配置：
 
-Model names, provider ids, command tokens, file paths, JSON keys and protocol names are
-**never** translated — only interface copy is. Anything missing from the Chinese bundle
-falls back to the English string rather than rendering a blank or a raw key.
+**设置 → 提供商 → 添加密钥**（选提供商、粘 API Key、保存）
 
-## Configuration
+密钥写入 pi 的配置目录 \`~/.pi/agent/auth.json\`，界面只显示"已配置"，**永不回显密钥**。然后在 **设置 → 代理** 里选默认模型即可。
 
-Every knob is settable as a \`--flag\` on the \`pi-forge-zh\` command OR as an environment
-variable. **Flags win when both are set.** Run \`pi-forge-zh --help\` for the full grouped
-list.
+没配好时请求会被拒绝，错误码是 \`no_model_configured\`（没选模型）或 \`no_api_key\`（提供商缺密钥）。
 
+## 中文界面
+
+- 默认**跟随浏览器语言**（中文系统打开即中文）
+- 强制指定：\`?lang=zh-CN\` / \`?lang=en\`（会被记住）
+- 随时切换：**设置 → 外观 → 语言**（立即生效，不用刷新）
+
+模型名、命令、文件路径、JSON 字段、协议名等技术标识**故意不翻译**，AI 的回复内容也不翻译（那是数据不是界面）。翻译有问题欢迎提 Issue。
+
+## 常用配置
+
+所有配置都可以写成 \`--参数\` 或环境变量（参数优先）。完整列表：\`pi-forge-zh --help\`。
+
+| 参数 | 环境变量 | 默认值 | 作用 |
+|---|---|---|---|
+| \`--port\` | \`PORT\` | \`3000\` | 网页端口 |
+| \`--host\` | \`HOST\` | \`127.0.0.1\` | 监听地址（局域网访问改成 \`0.0.0.0\`，**并务必设密码**） |
+| \`--workspace-path\` | \`WORKSPACE_PATH\` | \`~/.pi-forge/workspace\` | 工作区根目录（项目建在它下面） |
+| \`--pi-config-dir\` | \`PI_CONFIG_DIR\` | \`~/.pi/agent\` | pi 的配置与密钥目录 |
+| \`--forge-data-dir\` | \`FORGE_DATA_DIR\` | \`~/.pi-forge\` | 本程序自己的数据（项目列表、缓存） |
+| \`--app-name\` | \`APP_NAME\` | \`pi-forge\` | 界面显示的名字 |
+| \`--ui-password\` | \`UI_PASSWORD\` | 未设置 | 设了就启用网页登录 |
+| \`--api-key\` | \`API_KEY\` | 未设置 | 程序化调用用的 Bearer 令牌 |
+| \`--minimal-ui\` | \`MINIMAL_UI\` | 关 | 精简界面，适合部署给非技术用户 |
+
+\`--ui-password\`、\`--api-key\`、\`--jwt-secret\` 支持 \`@文件\` 写法（避免密钥进 shell 历史）。两个都没设时**不做任何鉴权** —— 只在本机自用时可以这样。
+
+## 常见问题
+
+**端口被占用** → \`pi-forge-zh --port 3100\`
+
+**界面还是英文** → 打开 \`http://localhost:3000/?lang=zh-CN\`，或在 设置 → 外观 → 语言 里选「简体中文」
+
+**终端报 \`posix_spawnp failed.\`** → node-pty 的执行权限问题，跑一次：
 \`\`\`bash
-pi-forge-zh --port 4000 --workspace-path ~/Code
-pi-forge-zh --api-key @/run/secrets/api-key --no-expose-docs
+node "$(npm root -g)/pi-forge-zh/bin/fix-pty-perms.mjs"
 \`\`\`
 
-The most common knobs:
-
-| Flag | Env var | Default | Purpose |
-|---|---|---|---|
-| \`--port\` | \`PORT\` | \`3000\` | HTTP listen port |
-| \`--host\` | \`HOST\` | \`127.0.0.1\` | Bind address |
-| \`--workspace-path\` | \`WORKSPACE_PATH\` | \`~/.pi-forge/workspace\` | Where project code lives |
-| \`--pi-config-dir\` | \`PI_CONFIG_DIR\` | \`~/.pi/agent\` | Pi SDK config (auth, models, settings) |
-| \`--forge-data-dir\` | \`FORGE_DATA_DIR\` | \`~/.pi-forge\` | pi-forge state (project list, caches) |
-| \`--app-name\` | \`APP_NAME\` | \`pi-forge\` | Display name shown in the UI |
-| \`--ui-password\` | \`UI_PASSWORD\` | (unset) | Enables browser login if set |
-| \`--api-key\` | \`API_KEY\` | (unset) | Enables \`Authorization: Bearer\` for programmatic use |
-
-\`--ui-password\`, \`--api-key\`, and \`--jwt-secret\` accept \`@<path>\` to read the value from a
-file (avoids shell history leakage). If both \`--ui-password\` and \`--api-key\` are unset,
-auth is disabled — for production, set at minimum \`--api-key\`.
-
-### Running alongside upstream \`pi-forge\`
-
-The defaults are inherited from upstream, so two installs would share \`~/.pi-forge\`. To
-keep them separate:
-
+**和官方英文版共存** → 两个包名不同，可同时装。默认数据目录相同（\`~/.pi-forge\`），要分开就显式指定：
 \`\`\`bash
 pi-forge-zh --port 3100 --forge-data-dir ~/.pi-forge-zh
 \`\`\`
 
-## What this fork changes
+**数据在哪 / 怎么卸载**
+数据在 \`--forge-data-dir\`（默认 \`~/.pi-forge\`）与工作区里的 \`.pi/sessions/\`；卸载 \`npm rm -g pi-forge-zh\` **不会删数据**。
 
-Only the client is touched — \`packages/server/\`, \`tests/\` (existing files),
-\`docker/\`, \`kubernetes/\` and CI are unchanged from upstream \`v1.5.4\`:
+## 这个 fork 改了什么
 
-- a zero-dependency i18n runtime (\`packages/client/src/i18n/\`) with per-area locale files
-- \`en\` and \`zh-CN\` bundles, English as the reference locale and the fallback
-- a language picker in Settings → Appearance
-- \`npm run i18n:audit\` (key parity, orphan keys, leftover English copy) and
-  \`tests/test-i18n.ts\` (bundle parity, placeholder parity, fallback behaviour)
+只改界面：i18n 代码全在 \`packages/client/src/i18n/\`（\`en\` + \`zh-CN\` 语言包、语言选择器、审计工具、测试），加上 42 个客户端文件把文案改成可翻译形式。服务端只有几行**显示用字符串**不同（命令名、启动日志、OpenAPI 标题、OTEL 服务名默认值）；服务端逻辑、接口、SSE 事件、数据格式、全部环境变量与命令行参数都与上游 \`v1.5.4\` 一致。
 
-## Uninstall / revert
+## 许可
 
-\`\`\`bash
-npm rm -g pi-forge-zh
-\`\`\`
+MIT —— 见 [LICENSE](./LICENSE)。上游 \`pi-forge\` © 2026 Devin Marks 与 pi-forge 贡献者；简体中文本地化及本 fork 的改动以同一许可发布。
 
-Data written by this app lives in \`--forge-data-dir\` (default \`~/.pi-forge\`); your
-projects and sessions are untouched by an uninstall.
+---
 
-## License
+## For English readers
 
-MIT — see [LICENSE](./LICENSE). \`pi-forge\` is © 2026 Devin Marks and pi-forge
-contributors; the Chinese localization and the fork's changes are released under the same
-license.
+\`pi-forge-zh\` is a community fork of the archived
+[pi-forge](https://github.com/Devin-Marks/pi-forge) — a self-hosted browser UI for the
+[pi coding agent](https://github.com/earendil-works/pi) — adding a source-level i18n layer
+with \`en\` and \`zh-CN\` locales. Install with \`npx pi-forge-zh\`; the UI follows your browser
+language, and can be forced with \`?lang=en\`. Model ids, commands, paths, JSON keys and
+protocol names are intentionally not translated. Everything else (server behaviour,
+routes, SSE events, config, CLI flags) is unchanged from upstream \`v1.5.4\`. MIT; upstream
+copyright retained. See the repository README for the English documentation.
 `;
 }
+
 
 main().catch((err) => {
   console.error("[build-publish-dir] failed:", err);
