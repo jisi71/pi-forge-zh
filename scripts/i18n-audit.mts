@@ -117,7 +117,11 @@ const SAFE_ATTRIBUTE = /^(?:https?:\/\/|\/|#|mailto:|data:|_blank|noopener|noref
 const COPY_ATTRIBUTES =
   "title|placeholder|aria-label|aria-description|alt|ariaLabel|ariaDescription|emptyHint|tooltip|hint";
 /** JSX text that is really code (generics, comparisons, operators). */
-const LOOKS_LIKE_CODE = /[=<>{}()[\];|&!*/+`]|\b(?:const|let|function|return|import|export)\b/;
+// NOTE: the `]` MUST be escaped. Writing `[=<>{}()[];...]` closes the class at
+// the inner `]`, which silently turned this filter into a no-op for `(`, `)`,
+// `!`, `|`, `&`, `*` — the exact characters that mark JSX ternaries and type
+// annotations. (`[` needs no escape inside a class; `]` does.)
+const LOOKS_LIKE_CODE = /[=<>{}()[\];|&!*`]|\b(?:const|let|function|return|import|export)\b/;
 /** JSX text nodes that are pure technical identifiers (kebab/snake/CONSTANT). */
 const TECHNICAL_TOKEN = /^(?:[A-Z][A-Z0-9_]*|[a-z][a-z0-9-]*|[a-z0-9_.-/]+)$/;
 /**
@@ -142,7 +146,10 @@ function isTechnicalLiteral(text: string): boolean {
   )
     return true;
   // Paths and refs: must contain a separator to qualify (feature/my-change, a/b)
-  if (/^[\w.:+-]*[/\\][\w./:+-]*$/.test(text)) return true;
+  // Paths, including home-relative ones (~/.pi/agent/skills/)
+  if (/^[~\w.:+-]*[/\\][\w./:+-]*$/.test(text)) return true;
+  // Absolute/relative commands with arguments (/bin/sh -c, ./run.sh --watch)
+  if (/^[~.]?\/[\w./-]+(?:\s+[\w-]+)*$/.test(text)) return true;
   // CLI flags
   if (/^-{1,2}[\w-]+$/.test(text)) return true;
   // Lowercase identifier-ish words (glob, retry, model) — a capitalized word
@@ -219,8 +226,19 @@ function scanLiterals(): Missing["literals"] {
     };
 
     // JSX text nodes: >text< — `[^<>{}]` spans newlines on purpose.
-    for (const match of source.matchAll(/>([^<>{}]+)</g)) {
-      push(match.index, match[1]!.trim());
+    //
+    // Only .tsx files are scanned this way: in a plain .ts file the only `>`…`<`
+    // pairs come from generic type annotations (`Record<string, X>`), and a
+    // whole-file scan happily spans a comment block between two of them.
+    // A match containing a comment fragment is likewise not JSX text.
+    if (file.endsWith(".tsx")) {
+      for (const match of source.matchAll(/>([^<>{}]+)</g)) {
+        const text = match[1]!;
+        // A match that spans a comment is not JSX text: the `>`/`<` pair came
+        // from an arrow function or a generic sitting next to a comment.
+        if (text.includes("//") || text.includes("/*")) continue;
+        push(match.index, text.trim());
+      }
     }
     // User-visible attributes with a literal value.
     for (const match of source.matchAll(new RegExp(`\\b(${COPY_ATTRIBUTES})="([^"]*)"`, "g"))) {

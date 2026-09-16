@@ -1,5 +1,5 @@
 /**
- * CLI argument parser tests for `pi-forge --flag` support.
+ * CLI argument parser tests for `pi-forge-zh --flag` support.
  *
  * Pure unit-style — imports `parseCliArgs` from the compiled
  * `dist/server/cli.js` and asserts:
@@ -270,7 +270,8 @@ console.log("\nhelp + version");
   assert("-v is recognized", versionShort.versionRequested === true);
 
   const helpText = buildHelpText("9.9.9");
-  assert("buildHelpText embeds the version", helpText.startsWith("pi-forge 9.9.9"));
+  // The help banner leads with the command name this fork installs as.
+  assert("buildHelpText embeds the version", helpText.startsWith("pi-forge-zh 9.9.9"));
   const helpGroups = [
     "Network",
     "Paths",

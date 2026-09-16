@@ -193,4 +193,12 @@ export const chatInput = {
     hideOutput: "Hide output",
     showOutput: "Show output",
   },
+
+  /**
+   * Shown while the operator has OTEL content capture enabled: sending a
+   * message requires acknowledging that its content is exported.
+   */
+  telemetry: {
+    ack: "I acknowledge that this message and related tool/model content will be included in telemetry because OTEL_CAPTURE_CONTENT is enabled.",
+  },
 } as const;

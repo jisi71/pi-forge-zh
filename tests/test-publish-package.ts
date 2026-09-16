@@ -8,7 +8,7 @@
  *   2. The synthetic package.json has the right shape — name, version
  *      from root, bin entry, deps hoisted from the server workspace,
  *      provenance enabled, public access.
- *   3. `node publish/bin/pi-forge.mjs` boots the workbench, serves
+ *   3. `node publish/bin/<pkg-name>.mjs` boots the workbench, serves
  *      `/api/v1/health`, and serves the embedded SPA (`/`).
  *
  * Why this is its own test (not folded into test-scaffold):
@@ -40,11 +40,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = resolve(__dirname, "..");
 const publishDir = resolve(repoRoot, "publish");
-const binPath = resolve(publishDir, "bin/pi-forge.mjs");
-const synthPkgPath = resolve(publishDir, "package.json");
 const rootPkg = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")) as {
+  name: string;
   version: string;
 };
+// The published package name and its command are the root package name (this
+// fork ships as `pi-forge-zh`); deriving them keeps the assertions about the
+// SYNTHESIS correct rather than pinning one particular product name.
+const pkgName = rootPkg.name;
+const binName = pkgName;
+const binPath = resolve(publishDir, "bin", `${pkgName}.mjs`);
+const synthPkgPath = resolve(publishDir, "package.json");
 const serverPkg = JSON.parse(
   readFileSync(resolve(repoRoot, "packages/server/package.json"), "utf8"),
 ) as { dependencies: Record<string, string> };
@@ -153,15 +159,15 @@ async function main(): Promise<void> {
     engines: { node?: string };
     type: string;
   };
-  assert("synth name === 'pi-forge'", synth.name === "pi-forge", synth.name);
+  assert(`synth name === '${pkgName}'`, synth.name === pkgName, synth.name);
   assert(
     "synth version matches root version",
     synth.version === rootPkg.version,
     `${synth.version} vs ${rootPkg.version}`,
   );
   assert(
-    "synth bin entry points at bin/pi-forge.mjs",
-    synth.bin["pi-forge"] === "bin/pi-forge.mjs",
+    `synth bin entry points at bin/${binName}.mjs`,
+    synth.bin[binName] === `bin/${binName}.mjs`,
     JSON.stringify(synth.bin),
   );
   assert("synth type === 'module'", synth.type === "module");
@@ -209,7 +215,7 @@ async function main(): Promise<void> {
   const piConfigDir = await mkdtemp(join(tmpdir(), "pi-forge-pub-pi-"));
   const forgeDataDir = await mkdtemp(join(tmpdir(), "pi-forge-pub-data-"));
   const port = await pickFreePort();
-  console.log(`[test-publish-package] launching publish/bin/pi-forge.mjs on :${port}`);
+  console.log(`[test-publish-package] launching publish/bin/${binName}.mjs on :${port}`);
 
   const child = spawn(process.execPath, [binPath], {
     cwd: repoRoot,

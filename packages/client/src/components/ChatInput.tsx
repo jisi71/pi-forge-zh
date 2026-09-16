@@ -2043,10 +2043,7 @@ export function ChatInput({ sessionId }: Props) {
               }}
               className="mt-0.5 h-4 w-4 accent-red-600"
             />
-            <span>
-              I acknowledge that this message and related tool/model content will be included in
-              telemetry because OTEL_CAPTURE_CONTENT is enabled.
-            </span>
+            <span>{t("chatInput.telemetry.ack")}</span>
           </label>
         )}
         <div className="flex items-end gap-2">

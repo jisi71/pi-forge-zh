@@ -172,4 +172,8 @@ export const chatInput: DeepPartial<EnMessages["chatInput"]> = {
     hideOutput: "隐藏输出",
     showOutput: "显示输出",
   },
+
+  telemetry: {
+    ack: "我已知晓：由于 OTEL_CAPTURE_CONTENT 已启用，本条消息及相关工具/模型内容将被纳入遥测数据。",
+  },
 };

@@ -245,18 +245,27 @@ try {
   ) as Record<string, string>;
   assert("session username is persisted", persisted["session-123"] === "alice@example.com");
 
+  // The warning copy lives in the locale bundles now (the components render it
+  // through t()), so assert the wiring AND the English source string rather
+  // than a literal that no longer appears in the component.
   const appSource = await readFile(resolve("packages/client/src/App.tsx"), "utf8");
+  const enApp = await readFile(resolve("packages/client/src/i18n/locales/en/app.ts"), "utf8");
   assert(
     "app banner warns when telemetry content capture is on",
-    appSource.includes("OTEL content capture on"),
+    appSource.includes('t("app.telemetry.badge")') && enApp.includes("OTEL content capture on"),
   );
   const chatInputSource = await readFile(
     resolve("packages/client/src/components/ChatInput.tsx"),
     "utf8",
   );
+  const enChatInput = await readFile(
+    resolve("packages/client/src/i18n/locales/en/chatInput.ts"),
+    "utf8",
+  );
   assert(
     "chat input requires telemetry capture acknowledgement",
-    chatInputSource.includes("I acknowledge that this message") &&
+    chatInputSource.includes('t("chatInput.telemetry.ack")') &&
+      enChatInput.includes("I acknowledge that this message") &&
       chatInputSource.includes("Confirm telemetry content capture before sending"),
   );
 } finally {

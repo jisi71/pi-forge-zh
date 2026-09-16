@@ -53,7 +53,10 @@ async function main(): Promise<void> {
   );
   assert(
     "keeps the desktop-only divider hidden on mobile",
-    app.includes("{!isMobile && (") && app.includes('ariaLabel="Resize project sidebar"'),
+    app.includes("{!isMobile && (") &&
+      // The label is localized now, so assert the accessible label is wired
+      // rather than pinning the English literal.
+      app.includes('ariaLabel={t("app.nav.resizeSidebar")}'),
   );
   assert(
     "accepts App-owned desktop sidebar sizing",
