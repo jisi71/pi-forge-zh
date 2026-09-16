@@ -1,6 +1,6 @@
 {
-  "name": "@pi-forge/client",
-  "version": "1.5.4",
+  "name": "@pi-forge-zh/client",
+  "version": "1.5.4-zh.1",
   "private": true,
   "type": "module",
   "scripts": {

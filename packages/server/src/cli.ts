@@ -330,7 +330,7 @@ const FLAGS: readonly FlagDef[] = [
     type: "string",
     group: "telemetry",
     desc: "OpenTelemetry service name",
-    defaultText: "pi-forge",
+    defaultText: "pi-forge-zh",
   },
   {
     name: "otel-service-version",
@@ -795,7 +795,7 @@ export function parseCliArgs(argv: string[]): ParseResult {
   if (parsed.positionals.length > 0) {
     result.errors.push(
       `Unexpected positional argument(s): ${parsed.positionals.join(", ")}. ` +
-        `pi-forge takes flags only — see --help.`,
+        `pi-forge-zh takes flags only — see --help.`,
     );
   }
 
@@ -891,12 +891,12 @@ const GROUP_LABELS: Record<FlagGroup, string> = {
 
 export function buildHelpText(version: string): string {
   const out: string[] = [];
-  out.push(`pi-forge ${version}`);
+  out.push(`pi-forge-zh ${version}`);
   out.push("");
   out.push("Browser UI for the pi coding agent.");
   out.push("");
   out.push("Usage:");
-  out.push("  pi-forge [options]");
+  out.push("  pi-forge-zh [options]");
   out.push("");
   out.push(
     "Every option below has an equivalent environment variable. Flags win when both are set.",
@@ -937,9 +937,9 @@ export function buildHelpText(version: string): string {
   );
   out.push("");
   out.push("Examples:");
-  out.push("  pi-forge --port 4000 --workspace-path ~/Code");
-  out.push("  pi-forge --api-key @/run/secrets/api-key");
-  out.push("  pi-forge --no-expose-docs --minimal-ui");
+  out.push("  pi-forge-zh --port 4000 --workspace-path ~/Code");
+  out.push("  pi-forge-zh --api-key @/run/secrets/api-key");
+  out.push("  pi-forge-zh --no-expose-docs --minimal-ui");
   out.push("");
   return out.join("\n");
 }

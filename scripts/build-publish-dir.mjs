@@ -39,7 +39,7 @@ const PUBLISH_DIR = resolve(REPO_ROOT, "publish");
 
 const SERVER_DIST = resolve(REPO_ROOT, "packages/server/dist");
 const CLIENT_DIST = resolve(REPO_ROOT, "packages/client/dist");
-const BIN_SRC = resolve(REPO_ROOT, "bin/pi-forge.mjs");
+const BIN_SRC = resolve(REPO_ROOT, "bin/pi-forge-zh.mjs");
 const POSTINSTALL_SRC = resolve(REPO_ROOT, "bin/fix-pty-perms.mjs");
 
 async function readJson(path) {
@@ -78,7 +78,7 @@ async function main() {
 
   // 4. Bin shim + postinstall fix-pty-perms script
   await mkdir(resolve(PUBLISH_DIR, "bin"), { recursive: true });
-  await copyFile(BIN_SRC, resolve(PUBLISH_DIR, "bin/pi-forge.mjs"));
+  await copyFile(BIN_SRC, resolve(PUBLISH_DIR, "bin/pi-forge-zh.mjs"));
   await copyFile(POSTINSTALL_SRC, resolve(PUBLISH_DIR, "bin/fix-pty-perms.mjs"));
 
   // 5. Synthetic package.json
@@ -91,21 +91,34 @@ async function main() {
     process.exit(1);
   }
   const publishPkg = {
-    name: "pi-forge",
+    name: "pi-forge-zh",
     version: rootPkg.version,
     description:
-      "Browser UI for the pi coding agent — embedded HTTP server with a React workbench (chat, file browser, terminal, git, MCP).",
-    keywords: ["pi", "coding-agent", "ai", "llm", "agent", "workbench", "fastify"],
-    homepage: "https://github.com/Devin-Marks/pi-forge#readme",
-    bugs: { url: "https://github.com/Devin-Marks/pi-forge/issues" },
+      "Browser UI for the pi coding agent with a Simplified Chinese interface — fork of pi-forge (upstream archived), embedded HTTP server with a React workbench (chat, file browser, terminal, git, MCP).",
+    keywords: [
+      "pi",
+      "coding-agent",
+      "ai",
+      "llm",
+      "agent",
+      "workbench",
+      "fastify",
+      "i18n",
+      "zh-CN",
+      "chinese",
+    ],
+    homepage: "https://github.com/jisi71/pi-forge-zh#readme",
+    bugs: { url: "https://github.com/jisi71/pi-forge-zh/issues" },
     repository: {
       type: "git",
-      url: "git+https://github.com/Devin-Marks/pi-forge.git",
+      url: "git+https://github.com/jisi71/pi-forge-zh.git",
     },
     license: "MIT",
-    author: "Devin Marks",
+    // Upstream MIT copyright is retained in LICENSE; the fork author is added
+    // here so the published metadata reflects both.
+    author: "Devin Marks (pi-forge); jisi71 (pi-forge-zh fork)",
     type: "module",
-    bin: { "pi-forge": "bin/pi-forge.mjs" },
+    bin: { "pi-forge-zh": "bin/pi-forge-zh.mjs" },
     files: ["bin/", "dist/", "README.md", "LICENSE"],
     // Same node target as the server workspace + CI matrix.
     engines: { node: ">=20" },
@@ -131,10 +144,10 @@ async function main() {
   await writeFile(resolve(PUBLISH_DIR, "README.md"), buildPublishReadme(rootPkg.version));
 
   // Friendly summary
-  console.log(`[build-publish-dir] assembled publish/ for pi-forge@${rootPkg.version}`);
+  console.log(`[build-publish-dir] assembled publish/ for ${publishPkg.name}@${rootPkg.version}`);
   console.log(`  server dist: ${relativeFromRoot(SERVER_DIST)} → publish/dist/server/`);
   console.log(`  client dist: ${relativeFromRoot(CLIENT_DIST)} → publish/dist/client/`);
-  console.log(`  bin: bin/pi-forge.mjs → publish/bin/pi-forge.mjs`);
+  console.log(`  bin: bin/pi-forge-zh.mjs → publish/bin/pi-forge-zh.mjs`);
   console.log(`  ${Object.keys(publishPkg.dependencies).length} runtime deps hoisted from server`);
   console.log(`Inspect with: cd publish && npm pack --dry-run`);
 }
@@ -144,37 +157,57 @@ function relativeFromRoot(p) {
 }
 
 function buildPublishReadme(version) {
-  // Consumer-focused README — the in-repo README assumes you cloned
-  // and want to contribute. npm users want to know how to install,
-  // run, and configure.
-  return `# pi-forge
+  // Consumer-facing README. The in-repo README targets contributors; npm users
+  // want install/run/configure and an honest statement of what this fork is.
+  return `# pi-forge-zh
 
-Browser UI for the [pi coding agent](https://github.com/badlogic/pi-mono) —
-an embedded HTTP server with a React workbench (chat, file browser,
-terminal, git integration, MCP support).
+**Simplified Chinese** interface for
+[pi-forge](https://github.com/Devin-Marks/pi-forge) — a self-hosted browser UI for the
+[pi coding agent](https://github.com/earendil-works/pi).
+
+> **This is a community fork.** Upstream \`pi-forge\` was
+> [archived](https://github.com/Devin-Marks/pi-forge) on 2026-09-16, so the project is no
+> longer maintained there. This build is \`pi-forge-zh@${version}\`, based on the last
+> upstream release (\`v1.5.4\`), and adds a source-level i18n layer with \`en\` and
+> \`zh-CN\` locales. Upstream copyright and the MIT license are retained — see
+> [LICENSE](./LICENSE).
 
 ## Install
 
 \`\`\`bash
 # One-shot
-npx pi-forge
+npx pi-forge-zh
 
 # Or install globally
-npm i -g pi-forge
-pi-forge
+npm i -g pi-forge-zh
+pi-forge-zh
 \`\`\`
 
-Open <http://localhost:3000> and pick a workspace folder.
+Open <http://localhost:3000> and pick a workspace folder. The interface follows your
+browser language (\`zh*\` → Chinese, otherwise English).
+
+## Language
+
+| | |
+|---|---|
+| Follow the browser | default |
+| Force Chinese | <http://localhost:3000/?lang=zh-CN> |
+| Force English | <http://localhost:3000/?lang=en> |
+| Switch live | **Settings → Appearance → Language** (stored in the browser only) |
+
+Model names, provider ids, command tokens, file paths, JSON keys and protocol names are
+**never** translated — only interface copy is. Anything missing from the Chinese bundle
+falls back to the English string rather than rendering a blank or a raw key.
 
 ## Configuration
 
-Every knob is settable as a \`--flag\` on the \`pi-forge\` command OR as
-an environment variable. **Flags win when both are set.** Run
-\`pi-forge --help\` for the full grouped list.
+Every knob is settable as a \`--flag\` on the \`pi-forge-zh\` command OR as an environment
+variable. **Flags win when both are set.** Run \`pi-forge-zh --help\` for the full grouped
+list.
 
 \`\`\`bash
-pi-forge --port 4000 --workspace-path ~/Code
-pi-forge --api-key @/run/secrets/api-key --no-expose-docs
+pi-forge-zh --port 4000 --workspace-path ~/Code
+pi-forge-zh --api-key @/run/secrets/api-key --no-expose-docs
 \`\`\`
 
 The most common knobs:
@@ -182,32 +215,52 @@ The most common knobs:
 | Flag | Env var | Default | Purpose |
 |---|---|---|---|
 | \`--port\` | \`PORT\` | \`3000\` | HTTP listen port |
+| \`--host\` | \`HOST\` | \`127.0.0.1\` | Bind address |
 | \`--workspace-path\` | \`WORKSPACE_PATH\` | \`~/.pi-forge/workspace\` | Where project code lives |
 | \`--pi-config-dir\` | \`PI_CONFIG_DIR\` | \`~/.pi/agent\` | Pi SDK config (auth, models, settings) |
-| \`--forge-data-dir\` | \`FORGE_DATA_DIR\` | \`~/.pi-forge\` | pi-forge state (project list) |
+| \`--forge-data-dir\` | \`FORGE_DATA_DIR\` | \`~/.pi-forge\` | pi-forge state (project list, caches) |
+| \`--app-name\` | \`APP_NAME\` | \`pi-forge\` | Display name shown in the UI |
 | \`--ui-password\` | \`UI_PASSWORD\` | (unset) | Enables browser login if set |
 | \`--api-key\` | \`API_KEY\` | (unset) | Enables \`Authorization: Bearer\` for programmatic use |
 
-\`--ui-password\`, \`--api-key\`, and \`--jwt-secret\` accept \`@<path>\` to
-read the value from a file (avoids shell history leakage). If both
-\`--ui-password\` and \`--api-key\` are unset, auth is disabled — for
-production, set at minimum \`--api-key\`.
+\`--ui-password\`, \`--api-key\`, and \`--jwt-secret\` accept \`@<path>\` to read the value from a
+file (avoids shell history leakage). If both \`--ui-password\` and \`--api-key\` are unset,
+auth is disabled — for production, set at minimum \`--api-key\`.
 
-## Programmatic API
+### Running alongside upstream \`pi-forge\`
 
-REST + Server-Sent Events under \`/api/v1/\`. Interactive docs at
-\`/api/docs\`. See the [project README](https://github.com/Devin-Marks/pi-forge#readme)
-for the full surface and example curl flows.
+The defaults are inherited from upstream, so two installs would share \`~/.pi-forge\`. To
+keep them separate:
 
-## Versioning
+\`\`\`bash
+pi-forge-zh --port 3100 --forge-data-dir ~/.pi-forge-zh
+\`\`\`
 
-This package version (\`${version}\`) tracks the [GitHub release](https://github.com/Devin-Marks/pi-forge/releases)
-of the same name. Docker images and the npm package are published in
-lockstep on each \`v*\` tag.
+## What this fork changes
+
+Only the client is touched — \`packages/server/\`, \`tests/\` (existing files),
+\`docker/\`, \`kubernetes/\` and CI are unchanged from upstream \`v1.5.4\`:
+
+- a zero-dependency i18n runtime (\`packages/client/src/i18n/\`) with per-area locale files
+- \`en\` and \`zh-CN\` bundles, English as the reference locale and the fallback
+- a language picker in Settings → Appearance
+- \`npm run i18n:audit\` (key parity, orphan keys, leftover English copy) and
+  \`tests/test-i18n.ts\` (bundle parity, placeholder parity, fallback behaviour)
+
+## Uninstall / revert
+
+\`\`\`bash
+npm rm -g pi-forge-zh
+\`\`\`
+
+Data written by this app lives in \`--forge-data-dir\` (default \`~/.pi-forge\`); your
+projects and sessions are untouched by an uninstall.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE). \`pi-forge\` is © 2026 Devin Marks and pi-forge
+contributors; the Chinese localization and the fork's changes are released under the same
+license.
 `;
 }
 

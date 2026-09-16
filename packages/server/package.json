@@ -1,6 +1,6 @@
 {
-  "name": "@pi-forge/server",
-  "version": "1.5.4",
+  "name": "@pi-forge-zh/server",
+  "version": "1.5.4-zh.1",
   "private": true,
   "type": "module",
   "scripts": {

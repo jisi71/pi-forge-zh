@@ -1,6 +1,6 @@
 {
-  "name": "pi-forge",
-  "version": "1.5.4",
+  "name": "pi-forge-zh",
+  "version": "1.5.4-zh.1",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -67,5 +67,15 @@
     "@google/genai": false,
     "protobufjs": false,
     "esbuild@0.28.1": true
+  },
+  "description": "Browser UI for the pi coding agent, with a Simplified Chinese interface — fork of pi-forge (upstream archived).",
+  "license": "MIT",
+  "homepage": "https://github.com/jisi71/pi-forge-zh#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jisi71/pi-forge-zh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jisi71/pi-forge-zh/issues"
   }
 }

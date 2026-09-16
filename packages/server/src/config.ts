@@ -399,7 +399,7 @@ export const config = Object.freeze({
     otlpEndpoint: readHttpUrl("OTEL_EXPORTER_OTLP_ENDPOINT"),
     otlpHeaders: readEnv("OTEL_EXPORTER_OTLP_HEADERS"),
     otlpTlsRejectUnauthorized: readBool("OTEL_EXPORTER_OTLP_TLS_REJECT_UNAUTHORIZED", true),
-    serviceName: readEnv("OTEL_SERVICE_NAME") ?? "pi-forge",
+    serviceName: readEnv("OTEL_SERVICE_NAME") ?? "pi-forge-zh",
     serviceVersion: readEnv("OTEL_SERVICE_VERSION") ?? "unknown",
     captureContent: readBool("OTEL_CAPTURE_CONTENT", false),
     debug: readBool("OTEL_DEBUG", false),

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * pi-forge CLI launcher.
+ * pi-forge-zh CLI launcher.
  *
  * The published npm package layout is:
  *
- *   pi-forge/
- *   ├── bin/pi-forge.mjs       (this file)
+ *   pi-forge-zh/
+ *   ├── bin/pi-forge-zh.mjs    (this file)
  *   ├── dist/server/           (built Fastify server — copy of packages/server/dist/)
  *   └── dist/client/           (built Vite SPA — copy of packages/client/dist/)
  *
@@ -20,7 +20,7 @@
  * Flag parsing: `cli.js` translates argv into env-var writes BEFORE
  * `index.js` is imported, because config.js reads `process.env` at
  * module-load time. Every server env var has an equivalent --flag —
- * see `pi-forge --help` or `packages/server/src/cli.ts` for the
+ * see `pi-forge-zh --help` or `packages/server/src/cli.ts` for the
  * complete table. Env vars still work as fallbacks for users who
  * already have them set; flag values win when both are present.
  */
@@ -41,9 +41,9 @@ const parsed = parseCliArgs(process.argv.slice(2));
 
 if (parsed.errors.length > 0) {
   for (const err of parsed.errors) {
-    process.stderr.write(`pi-forge: ${err}\n`);
+    process.stderr.write(`pi-forge-zh: ${err}\n`);
   }
-  process.stderr.write(`pi-forge: run with --help for usage.\n`);
+  process.stderr.write(`pi-forge-zh: run with --help for usage.\n`);
   process.exit(2);
 }
 
@@ -55,7 +55,7 @@ if (parsed.helpRequested) {
 
 if (parsed.versionRequested) {
   const pkg = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
-  process.stdout.write(`pi-forge ${pkg.version}\n`);
+  process.stdout.write(`pi-forge-zh ${pkg.version}\n`);
   process.exit(0);
 }
 

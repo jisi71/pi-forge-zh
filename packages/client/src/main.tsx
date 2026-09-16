@@ -65,7 +65,7 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
     // /api/v1/health`, which surfaced nothing useful server-side and
     // was confusing in dev tools. Real client-error reporting is a
     // Phase 18 polish item.
-    console.error("[pi-forge] root render error", error, info);
+    console.error("[pi-forge-zh] root render error", error, info);
   }
 
   override render(): ReactNode {
@@ -105,10 +105,10 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
 }
 
 window.addEventListener("error", (e) => {
-  console.error("[pi-forge] uncaught error", e.error);
+  console.error("[pi-forge-zh] uncaught error", e.error);
 });
 window.addEventListener("unhandledrejection", (e) => {
-  console.error("[pi-forge] unhandled rejection", e.reason);
+  console.error("[pi-forge-zh] unhandled rejection", e.reason);
 });
 
 const rootEl = document.getElementById("root");

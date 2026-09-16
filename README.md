@@ -1,14 +1,28 @@
 <p align="center">
-  <img src="docs/images/icon.png" alt="pi-forge" width="120" height="120"/>
+  <img src="docs/images/icon.png" alt="pi-forge-zh" width="120" height="120"/>
 </p>
 
-# pi-forge
+# pi-forge-zh
 
-[![CI](https://github.com/Devin-Marks/pi-forge/actions/workflows/ci.yml/badge.svg)](https://github.com/Devin-Marks/pi-forge/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Devin-Marks/pi-forge?sort=semver)](https://github.com/Devin-Marks/pi-forge/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> **Community fork — Simplified Chinese interface.**
+>
+> Upstream [`Devin-Marks/pi-forge`](https://github.com/Devin-Marks/pi-forge) was
+> **archived on 2026-09-16**, so it is read-only and no longer maintained. This fork is
+> based on the final upstream release **`v1.5.4`** and adds a source-level i18n layer with
+> `en` and `zh-CN` locales plus a language picker. Upstream's MIT copyright and license
+> text are retained verbatim in [`LICENSE`](./LICENSE).
+>
+> **Only the client is touched.** `packages/server/` (except the command name and one log
+> line), `tests/` (existing files), `docker/`, `kubernetes/` and CI are byte-identical to
+> upstream `v1.5.4`.
+>
+> - Chinese UI: open <http://localhost:3000/?lang=zh-CN>, or just use a Chinese browser
+> - English UI is unchanged: `en` is the reference locale and the runtime falls back to it
+> - Docs: [`packages/client/src/i18n/README.md`](./packages/client/src/i18n/README.md)
+>   (the i18n contract), [`docs/UPGRADE.md`](./docs/UPGRADE.md) (how this fork tracks a
+>   new upstream/SDK release), [`docs/VERIFY.md`](./docs/VERIFY.md) (how it is verified)
 
-A self-hosted browser UI for the [pi coding agent](https://github.com/badlogic/pi-mono).
+A self-hosted browser UI for the [pi coding agent](https://github.com/earendil-works/pi).
 Chat with the agent against your code, browse files, run a terminal, and review
 diffs — all from one tab.
 

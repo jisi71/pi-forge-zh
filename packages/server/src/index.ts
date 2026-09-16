@@ -374,7 +374,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await fastify.register(swagger, {
     openapi: {
-      info: { title: "pi-forge API", version: "1.0.0" },
+      info: { title: "pi-forge-zh API", version: "1.0.0" },
       components: {
         securitySchemes: {
           bearerAuth: { type: "http", scheme: "bearer" },
@@ -719,15 +719,15 @@ export async function start(): Promise<void> {
       // EACCES on `/workspace` (the legacy default) was the most common
       // dev startup failure. Surface a clear hint instead of letting
       // Fastify start in a broken state.
-      console.error(`[pi-forge] failed to create directory ${dir}:`, (err as Error).message);
-      console.error(`[pi-forge] hint: set WORKSPACE_PATH/FORGE_DATA_DIR to a writable location`);
+      console.error(`[pi-forge-zh] failed to create directory ${dir}:`, (err as Error).message);
+      console.error(`[pi-forge-zh] hint: set WORKSPACE_PATH/FORGE_DATA_DIR to a writable location`);
       process.exit(1);
     }
   }
   try {
     await applySandboxStartupChowns();
   } catch (err) {
-    console.error("[pi-forge] failed to apply sandbox startup chowns:", (err as Error).message);
+    console.error("[pi-forge-zh] failed to apply sandbox startup chowns:", (err as Error).message);
     process.exit(1);
   }
 
@@ -740,7 +740,7 @@ export async function start(): Promise<void> {
   logSecretHygieneState();
   try {
     await fastify.listen({ port: config.port, host: config.host });
-    fastify.log.info(`pi-forge server listening on :${config.port}`);
+    fastify.log.info(`pi-forge-zh server listening on :${config.port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

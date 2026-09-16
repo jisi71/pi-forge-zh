@@ -15,6 +15,41 @@ section. See the "Versions" section of the README for the support window policy.
 
 ## [Unreleased]
 
+## [1.5.4-zh.1] — 2026-09-16
+
+First release of the **pi-forge-zh** fork. Upstream `pi-forge` was archived on
+2026-09-16; this is the final upstream release (`v1.5.4`) plus a Simplified
+Chinese localization. Everything below `[1.5.4]` is upstream's history,
+unchanged.
+
+### Added
+
+- **Simplified Chinese interface.** A zero-dependency i18n layer
+  (`packages/client/src/i18n/`) with per-area `en` and `zh-CN` locale files.
+  English is the reference locale: it defines the key set, it is the source of
+  the `t()` key type, and it is the runtime fallback, so a key a locale forgets
+  renders in English rather than breaking.
+- **Language picker** in Settings → Appearance. Resolution order is `?lang=` →
+  `localStorage` → browser language (`zh*` → `zh-CN`) → `en`. Client-side only:
+  no server call, no config file, no new env var.
+- **`npm run i18n:audit`** — key parity, orphan keys, bundle wiring and a scan
+  for English interface copy that was never routed through `t()`.
+- **`tests/test-i18n.ts`** — bundle parity, that every `{placeholder}` in the
+  English source survives translation, plural selection, and English fallback.
+
+### Changed
+
+- **Fork identity.** Package renamed to `pi-forge-zh`, command renamed to
+  `pi-forge-zh`, startup log line and OpenAPI title updated, and the OTEL
+  `service.name` default changed to `pi-forge-zh` so telemetry from this fork is
+  distinguishable. Display defaults that identify the *application* (`--app-name`,
+  the browser title, the PWA manifest name) still say `pi-forge`; override with
+  `--app-name` if you want something else.
+- Identifiers that are contracts stay untouched: all `FORGE_*` / `PI_CONFIG_DIR`
+  environment variables, every CLI flag, the JWT audience, the `pi-forge/*`
+  browser storage keys, the `pi-forge-base-path` handshake and the
+  `~/.pi-forge` data directory default.
+
 ## [1.5.4] — 2026-09-11
 
 ### Added
