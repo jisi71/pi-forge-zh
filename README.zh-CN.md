@@ -72,7 +72,16 @@ cd docker && docker compose up -d --build
 
 容器默认映射 `127.0.0.1:3000`，并挂载三处：工作区、`~/.pi/agent`（pi 的配置与密钥）、数据目录。想让它只能本机访问就不用改（默认就是 `127.0.0.1`）。
 
-### 方式 D：从源码跑
+### 方式 D：直接装 GitHub 上的安装包（不走 npm registry）
+
+国内网络对 npm 官方源有时不稳，或者你装了镜像源（如 `npmmirror`）—— 那也能装，直接用 Release 里的 tarball：
+
+```bash
+npm i -g https://github.com/jisi71/pi-forge-zh/releases/download/v1.5.4-zh.1/pi-forge-zh-1.5.4-zh.1.tgz
+pi-forge-zh
+```
+
+### 方式 E：从源码跑
 
 ```bash
 git clone https://github.com/jisi71/pi-forge-zh.git

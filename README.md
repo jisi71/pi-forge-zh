@@ -80,6 +80,15 @@ cp docker/.env.example docker/.env       # edit auth + paths if you want
 cd docker && docker compose up -d --build
 ```
 
+### From a release tarball (no npm registry involved)
+
+Useful on networks where the official npm registry is slow or unreachable:
+
+```bash
+npm i -g https://github.com/jisi71/pi-forge-zh/releases/download/v1.5.4-zh.1/pi-forge-zh-1.5.4-zh.1.tgz
+pi-forge-zh
+```
+
 ### Rootless Podman (SELinux-enabled Linux)
 
 Use the Podman overlay so the container user maps to your host user and Podman

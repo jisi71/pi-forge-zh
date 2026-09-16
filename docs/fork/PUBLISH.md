@@ -2,6 +2,37 @@
 
 上游 `pi-forge` 已归档，本 fork 自己发版。整条链路都在本仓库里，可重复执行。
 
+## 〇、先确认 registry：镜像站不能发布
+
+```bash
+npm config get registry
+```
+
+如果是 `https://registry.npmmirror.com`（或其它国内镜像），**`npm publish` 会失败** ——
+镜像是上游 npmjs 的只读副本，没有发布能力。镜像可以继续用于**安装**，但发布必须显式指定官方源：
+
+```bash
+npm login --registry=https://registry.npmjs.org/          # 首次
+cd src/publish && npm publish --registry=https://registry.npmjs.org/
+```
+
+（不要为了发布把全局 registry 改成官方源 —— 那会让日常安装变慢。用 `--registry=` 按次指定即可。）
+
+发完之后，国内镜像通常几分钟内同步；在那之前 `npx pi-forge-zh` 可能还拉不到，
+可以先用下面的 Release tarball 方式。
+
+### 完全不依赖 registry 的分发方式（已实测）
+
+把构建出的 tarball 挂到 GitHub Release，用户直接用 URL 安装：
+
+```bash
+gh release upload v1.5.4-zh.1 build/pi-forge-zh-1.5.4-zh.1.tgz --clobber
+# 用户侧：
+npm i -g https://github.com/jisi71/pi-forge-zh/releases/download/v1.5.4-zh.1/pi-forge-zh-1.5.4-zh.1.tgz
+```
+
+这条路径验证过：安装后 `pi-forge-zh --version`、启动、`GET /` 200、版本号都对。
+
 ## 一、发一版到 npm
 
 ```bash
