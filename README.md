@@ -19,8 +19,8 @@
 > - Chinese UI: open <http://localhost:3000/?lang=zh-CN>, or just use a Chinese browser
 > - English UI is unchanged: `en` is the reference locale and the runtime falls back to it
 > - Docs: [`packages/client/src/i18n/README.md`](./packages/client/src/i18n/README.md)
->   (the i18n contract), [`docs/UPGRADE.md`](./docs/UPGRADE.md) (how this fork tracks a
->   new upstream/SDK release), [`docs/VERIFY.md`](./docs/VERIFY.md) (how it is verified)
+>   (the i18n contract), [`docs/fork/`](./docs/fork/README.md) (fork maintenance), [`docs/fork/UPGRADE.md`](./docs/fork/UPGRADE.md) (how this fork tracks a
+>   new upstream/SDK release), [`docs/fork/VERIFY.md`](./docs/fork/VERIFY.md) (how it is verified)
 
 A self-hosted browser UI for the [pi coding agent](https://github.com/earendil-works/pi).
 Chat with the agent against your code, browse files, run a terminal, and review
