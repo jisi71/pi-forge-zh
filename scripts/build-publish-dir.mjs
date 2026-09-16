@@ -131,11 +131,17 @@ async function main() {
     // bin/fix-pty-perms.mjs for the full story.
     scripts: { postinstall: "node bin/fix-pty-perms.mjs" },
     dependencies: serverPkg.dependencies,
-    // `publishConfig.provenance: true` makes `npm publish` attach a
-    // sigstore-signed provenance attestation tying this version to the
-    // GitHub Actions run that produced it. Free with the trusted-
-    // publisher OIDC flow we use in `.github/workflows/release.yml`.
-    publishConfig: { access: "public", provenance: true },
+    // `tag: "latest"` is required because every release of this fork is a
+    // semver PRERELEASE (`1.5.4-zh.1`): npm refuses to publish a prerelease
+    // without an explicit dist-tag, to stop one becoming `latest` by accident.
+    // Here that is exactly what we want — this package has no stable line — so
+    // the tag is declared in publishConfig and a plain `npm publish` works.
+    //
+    // `provenance: true` would attach a sigstore attestation tying the version
+    // to the CI run that produced it. It is only meaningful when publishing
+    // from GitHub Actions with OIDC; a local `npm publish` silently skips it.
+    // Flip it on if this fork ever gains a release workflow.
+    publishConfig: { access: "public", tag: "latest", provenance: false },
   };
   await writeFile(resolve(PUBLISH_DIR, "package.json"), JSON.stringify(publishPkg, null, 2) + "\n");
 

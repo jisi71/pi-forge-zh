@@ -16,6 +16,20 @@ npm login --registry=https://registry.npmjs.org/          # 首次
 cd src/publish && npm publish --registry=https://registry.npmjs.org/
 ```
 
+**关于 `--tag`：** 本 fork 的版本号都是 semver **预发布版**（`1.5.4-zh.1` 里的 `-zh.1`），
+npm 默认拒绝发布预发布版，除非显式给 dist-tag。`publishConfig` 里已经声明了
+`tag: "latest"`（这个包没有稳定线，预发布版就是 latest），所以上面这条命令**原样可用**；
+如果哪天去掉那个字段，就得写成 `npm publish --tag latest ...`。
+
+`publishConfig.provenance` 显式设为 `false`：provenance 只有在 GitHub Actions 里用 OIDC
+发布才有意义，本地发布会静默跳过 —— 将来若给本 fork 加了 release workflow，再改回 `true`。
+
+发布前建议先干跑一遍（不会真的发布）：
+
+```bash
+cd src/publish && npm publish --dry-run --registry=https://registry.npmjs.org/
+```
+
 （不要为了发布把全局 registry 改成官方源 —— 那会让日常安装变慢。用 `--registry=` 按次指定即可。）
 
 发完之后，国内镜像通常几分钟内同步；在那之前 `npx pi-forge-zh` 可能还拉不到，
