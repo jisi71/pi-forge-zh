@@ -155,7 +155,7 @@ async function main(): Promise<void> {
     bin: Record<string, string>;
     dependencies: Record<string, string>;
     files: string[];
-    publishConfig: { access?: string; provenance?: boolean };
+    publishConfig: { access?: string; tag?: string; provenance?: boolean };
     engines: { node?: string };
     type: string;
   };
@@ -178,9 +178,20 @@ async function main(): Promise<void> {
     synth.publishConfig.access === "public",
     JSON.stringify(synth.publishConfig),
   );
+  // Every release of this fork is a semver prerelease (`1.5.4-zh.1`), which npm
+  // will not publish without an explicit dist-tag — declaring it in
+  // publishConfig keeps a plain `npm publish` working.
   assert(
-    "synth publishConfig.provenance === true",
-    synth.publishConfig.provenance === true,
+    "synth publishConfig.tag === 'latest'",
+    synth.publishConfig.tag === "latest",
+    JSON.stringify(synth.publishConfig),
+  );
+  // Provenance only means anything when publishing from GitHub Actions with
+  // OIDC; this fork publishes locally, so it must be declared off rather than
+  // left to npm's environment sniffing.
+  assert(
+    "synth publishConfig.provenance === false (local publishes)",
+    synth.publishConfig.provenance === false,
     JSON.stringify(synth.publishConfig),
   );
   assert(
