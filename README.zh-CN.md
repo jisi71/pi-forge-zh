@@ -107,6 +107,10 @@ pi 需要知道用哪个模型、以及对应的 API 密钥。两种方式，**�
 3. 粘上 API Key，保存。密钥会写入 pi 的配置文件 `~/.pi/agent/auth.json`（界面只显示"是否已配置"，**永远不回显密钥内容**）
 4. 回到 **代理** 标签可以设默认模型和默认思考等级（也可以留空，在对话输入框上临时切）
 
+<p align="center">
+  <img src="docs/images/zh-providers.png" alt="设置 → 提供商：界面中文，提供商 id 与模型名保留原文" width="900"/>
+</p>
+
 ### 方式 2：用 pi 命令行的登录流程
 
 如果你已经装过 pi 本体（`npm i -g @earendil-works/pi-coding-agent` 之类），用它自己的登录命令配好即可 —— pi-forge 直接读同一份配置。
