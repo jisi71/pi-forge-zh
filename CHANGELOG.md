@@ -15,6 +15,23 @@ section. See the "Versions" section of the README for the support window policy.
 
 ## [Unreleased]
 
+## [1.5.4-zh.2] — 2026-09-16
+
+Docs-only release: the npm package page is the first thing a Chinese user sees,
+and the previous README had no picture of the interface and one broken link.
+
+### Fixed
+
+- The LICENSE link pointed at `./LICENSE`, which does not resolve on the npm
+  website (npm does not serve package files at that path). It now points at the
+  file on GitHub.
+
+### Added
+
+- Three screenshots of the Chinese interface in the npm README (shell, Settings
+  → Providers, the language picker), referenced by absolute URLs so the npm
+  page renders them.
+
 ## [1.5.4-zh.1] — 2026-09-16
 
 First release of the **pi-forge-zh** fork. Upstream `pi-forge` was archived on

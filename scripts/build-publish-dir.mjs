@@ -173,6 +173,8 @@ function buildPublishReadme(version) {
 
 > **这是社区 fork。** 上游 [pi-forge](https://github.com/Devin-Marks/pi-forge) 已于 2026-09-16 归档、不再维护。本包基于上游最后一个版本 (\`v1.5.4\`)，加上完整简体中文界面。当前版本 \`pi-forge-zh@${version}\`。上游 MIT 版权与许可原样保留（见 LICENSE）。
 
+<img src="https://raw.githubusercontent.com/jisi71/pi-forge-zh/main/docs/images/zh-shell.png" alt="中文界面：左侧项目与会话、中间对话、右侧面板" width="900"/>
+
 ## 安装
 
 \`\`\`bash
@@ -190,6 +192,8 @@ pi-forge-zh
 
 **设置 → 提供商 → 添加密钥**（选提供商、粘 API Key、保存）
 
+<img src="https://raw.githubusercontent.com/jisi71/pi-forge-zh/main/docs/images/zh-providers.png" alt="设置 → 提供商：界面中文，提供商 id 与模型名保留原文" width="860"/>
+
 密钥写入 pi 的配置目录 \`~/.pi/agent/auth.json\`，界面只显示"已配置"，**永不回显密钥**。然后在 **设置 → 代理** 里选默认模型即可。
 
 没配好时请求会被拒绝，错误码是 \`no_model_configured\`（没选模型）或 \`no_api_key\`（提供商缺密钥）。
@@ -199,6 +203,8 @@ pi-forge-zh
 - 默认**跟随浏览器语言**（中文系统打开即中文）
 - 强制指定：\`?lang=zh-CN\` / \`?lang=en\`（会被记住）
 - 随时切换：**设置 → 外观 → 语言**（立即生效，不用刷新）
+
+<img src="https://raw.githubusercontent.com/jisi71/pi-forge-zh/main/docs/images/zh-language.png" alt="语言选择：跟随浏览器 / English / 简体中文" width="780"/>
 
 模型名、命令、文件路径、JSON 字段、协议名等技术标识**故意不翻译**，AI 的回复内容也不翻译（那是数据不是界面）。翻译有问题欢迎提 Issue。
 
@@ -245,7 +251,7 @@ pi-forge-zh --port 3100 --forge-data-dir ~/.pi-forge-zh
 
 ## 许可
 
-MIT —— 见 [LICENSE](./LICENSE)。上游 \`pi-forge\` © 2026 Devin Marks 与 pi-forge 贡献者；简体中文本地化及本 fork 的改动以同一许可发布。
+MIT —— 见 [LICENSE](https://github.com/jisi71/pi-forge-zh/blob/main/LICENSE)。上游 \`pi-forge\` © 2026 Devin Marks 与 pi-forge 贡献者；简体中文本地化及本 fork 的改动以同一许可发布。
 
 ---
 

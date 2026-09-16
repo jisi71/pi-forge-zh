@@ -122,6 +122,17 @@ scripts/install-zh.sh --yes
 注意 `@earendil-works/pi-*` 三个包必须**同版本**，且 `docs/VERIFY.md` 里的浏览器走查
 覆盖不到 SDK 行为 —— SDK 升级属于「必须真跑一次对话」的改动。
 
+## 已知的发布后现象（无害）
+
+`npx pi-forge-zh` 会在安装时打印一条（上游继承来的）传递依赖弃用警告：
+
+```
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported...
+```
+
+它来自上游的依赖树（`exceljs` 一带），不影响功能；上游已归档，要消掉需要自己在
+`overrides` 里指定 `uuid` 版本，属于可选清理，不值得为它单独发版。
+
 ## 四、发布前检查清单
 
 - [ ] `npm run check` 全绿（允许上游自带的 2 条 react-refresh warning）
