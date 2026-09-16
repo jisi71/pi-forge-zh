@@ -24,6 +24,32 @@ npm 默认拒绝发布预发布版，除非显式给 dist-tag。`publishConfig` 
 `publishConfig.provenance` 显式设为 `false`：provenance 只有在 GitHub Actions 里用 OIDC
 发布才有意义，本地发布会静默跳过 —— 将来若给本 fork 加了 release workflow，再改回 `true`。
 
+### 发布需要两步验证（EOTP）—— 这一步必须走完
+
+如果 npm 账号开启了 2FA（多数账号默认对「发布」开启），`npm publish` 不会直接成功，而是打印：
+
+```
+npm error code EOTP
+npm error This operation requires a one-time password.
+npm error Open this URL in your browser to authenticate: https://www.npmjs.com/auth/cli/…
+```
+
+**必须回到终端按回车打开那个网址、在浏览器里登录并确认**，npm 才会继续发布并打印 `+ pi-forge-zh@x.y.z`。
+如果那一步没走完（或直接关掉），**registry 上什么都不会出现** —— 而表面看起来「命令跑完了」。
+两种验证方式任选：
+
+```bash
+npm publish --registry=https://registry.npmjs.org/          # 走浏览器验证，最省事
+npm publish --registry=https://registry.npmjs.org/ --otp=123456   # 用验证器里的 6 位码（30 秒内有效）
+```
+
+**发布后一定要独立确认**，不要只看终端输出（尤其是别把 `--dry-run` 的输出当成发布成功）：
+
+```bash
+curl -s "https://registry.npmjs.org/-/package/pi-forge-zh/dist-tags?t=$(date +%s)"
+# 期望看到 {"latest":"x.y.z"}，版本号是你刚发的那个
+```
+
 发布前建议先干跑一遍（不会真的发布）：
 
 ```bash
