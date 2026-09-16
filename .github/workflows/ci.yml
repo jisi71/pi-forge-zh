@@ -19,6 +19,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install ripgrep
+        # The pi SDK's grep/find tools shell out to `rg`; when it is missing they
+        # try to download a binary, and one runner failed that download, turning
+        # CI red for an unrelated commit. The runner image does not ship
+        # ripgrep, so install it and make the dependency deterministic.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+
       - name: Install dependencies
         run: npm ci
 
