@@ -4,6 +4,10 @@
 
 # pi-forge-zh
 
+[![CI](https://github.com/jisi71/pi-forge-zh/actions/workflows/ci.yml/badge.svg)](https://github.com/jisi71/pi-forge-zh/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/pi-forge-zh?label=npm)](https://www.npmjs.com/package/pi-forge-zh)
+
 > **Community fork — Simplified Chinese interface.**
 >
 > Upstream [`Devin-Marks/pi-forge`](https://github.com/Devin-Marks/pi-forge) was
@@ -12,9 +16,12 @@
 > `en` and `zh-CN` locales plus a language picker. Upstream's MIT copyright and license
 > text are retained verbatim in [`LICENSE`](./LICENSE).
 >
-> **Only the client is touched.** `packages/server/` (except the command name and one log
-> line), `tests/` (existing files), `docker/`, `kubernetes/` and CI are byte-identical to
-> upstream `v1.5.4`.
+> **The change is almost entirely client-side.** All the i18n code lives in
+> `packages/client/src/i18n/` plus 42 client files. A handful of server files differ, and
+> only in **display strings**: the CLI command name, the startup log line, the OpenAPI
+> title and the OTEL `service.name` default. Server behaviour, routes, SSE events, the
+> data format, every `FORGE_*`/`PI_CONFIG_DIR` env var, every CLI flag, the JWT audience
+> and the `pi-forge/*` browser storage keys are untouched from upstream `v1.5.4`.
 >
 > - Chinese UI: open <http://localhost:3000/?lang=zh-CN>, or just use a Chinese browser
 > - English UI is unchanged: `en` is the reference locale and the runtime falls back to it
@@ -65,8 +72,8 @@ diffs — all from one tab.
 ### Docker (recommended for ongoing use)
 
 ```bash
-git clone https://github.com/Devin-Marks/pi-forge.git
-cd pi-forge
+git clone https://github.com/jisi71/pi-forge-zh.git
+cd pi-forge-zh
 cp docker/.env.example docker/.env       # edit auth + paths if you want
 cd docker && docker compose up -d --build
 ```
@@ -77,8 +84,8 @@ Use the Podman overlay so the container user maps to your host user and Podman
 can apply private SELinux labels to the three bind mounts:
 
 ```bash
-git clone https://github.com/Devin-Marks/pi-forge.git
-cd pi-forge
+git clone https://github.com/jisi71/pi-forge-zh.git
+cd pi-forge-zh
 cp docker/.env.example docker/.env       # edit auth + paths if you want
 cd docker
 PUID=$(id -u) PGID=$(id -g) \
