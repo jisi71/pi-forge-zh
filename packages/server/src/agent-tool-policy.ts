@@ -1,5 +1,5 @@
 import { existsSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, resolve, sep, relative } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, sep, relative } from "node:path";
 import { config } from "./config.js";
 
 const PROTECTED_PI_CONFIG_FILES = new Set(["auth.json", "models.json", "settings.json"]);
@@ -24,14 +24,30 @@ function pathWithin(child: string, parent: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
+/**
+ * Real path of `abs`, resolved through its nearest existing ancestor.
+ *
+ * The non-existent tail is preserved: resolving only the ancestor would drop the
+ * file name, and callers compare the result against a directory root (protected
+ * pi config, FORGE_DATA_DIR) to decide whether the path is inside it. A dropped
+ * tail made a not-yet-existing `~/.pi/agent/models.json` look like the config dir
+ * itself — relative path `""`, which matches no protected file name — so the
+ * write ops were allowed to *create* protected config. Only macOS hit this,
+ * because `os.tmpdir()` sits under `/var`, a symlink to `/private/var`, so the
+ * literal path never matched the realpath of the root.
+ */
 function realpathExistingOrParent(abs: string): string {
   let cur = abs;
+  const missing: string[] = [];
   while (!existsSync(cur)) {
     const parent = dirname(cur);
-    if (parent === cur) break;
+    if (parent === cur) return abs;
+    missing.unshift(basename(cur));
     cur = parent;
   }
-  return realpathSync.native(cur);
+  return missing.length === 0
+    ? realpathSync.native(cur)
+    : join(realpathSync.native(cur), ...missing);
 }
 
 function firstSegment(rel: string): string {
