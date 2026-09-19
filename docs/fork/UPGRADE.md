@@ -145,6 +145,35 @@ scripts/install-zh.sh --yes
 `install-zh.sh` 会先把**当前正式安装包** `npm pack` 到 `backup/`，因此从坏升级
 回退到「升级前的正式版本」也是离线可用的：`scripts/rollback.sh --yes`。
 
+## 实战记录：pi SDK 0.84.3 → 0.85.1（2026-09-19）
+
+上游已归档，所以 SDK 是唯一还需要跟进的依赖。资料留档：
+
+| 项目 | 实测 |
+|---|---|
+| 改动面 | 2 个 `package.json` 的 3 个 pin + `package-lock.json`（`npm install`） |
+| 符号兼容性 | pi-forge 从 SDK 导入的 **38 个符号在 0.85.1 中全部存在**（逐个核对），`tsc` 0 报错 |
+| 会话格式 | 两边都是 `SESSION_VERSION = 3`，JSONL 记录类型逐项一致 → 与 `pi` CLI 建的会话互通 |
+| 0.85.x 实质变化 | TUI 侧为主（全屏键位、Alt 滚轮、prompt-cache TTL、Claude thinking effort）；**网页端看得见的是模型目录**：同一份远程缓存下，0.85.1 比 0.84.3 多 82 条、少 72 条 provider/model（实测：两个实例同时启动对照） |
+| 模型目录的真实来源 | SDK 会远程抓取并缓存到 `~/.pi/agent/models-store.json`，但**每个 SDK 版本自己解析出的目录不同** —— 所以长跑的旧实例与新建实例对比会被“缓存新鲜度”混淆，必须**同时启动两份**再比 |
+| 集成测试 | 本地 57 个全过（跳过 3 个已证实的 macOS 环境问题） |
+| 顺带发现的真 bug | macOS 专属：`realpathExistingOrParent()` 对不存在的路径会丢掉文件名，导致受保护的 pi 配置文件在**尚未创建时**可被模型工具创建，见同批次的 `fix(server)` 提交 |
+| 白查一轮的教训 | 本地跑测试**必须先 `npm run build`**：测试导入的是 `packages/server/dist/*`，不是 `src/*`，否则测的是旧产物 |
+
+**SDK 升级专用清单**：`npm install` → `npm run check` → `npm run build` →
+`npm run test:ci -- --skip git,orchestration,session-export` → 预览装包 → 41 步界面走查
+（zh + en）→ `validate.sh --strict`。
+
+要看这次升级对模型选择的影响，**同时**启动旧版与新版（各自独立前缀/端口），再 diff：
+
+```bash
+curl -s http://127.0.0.1:3200/api/v1/config/providers   # 旧版
+curl -s http://127.0.0.1:3100/api/v1/config/providers   # 新版
+```
+
+判断「这次升级有没有风险」的两个快问：**符号还在不在**（`tsc` 会直接告诉你）、
+**会话格式版本号是否相同**（不同则网页端与 CLI 的会话会互相读不了）。
+
 ## 实战记录：v1.4.6 → v1.5.4（2026-09-13）
 
 第一次真正跑完这套流程，数据留档：

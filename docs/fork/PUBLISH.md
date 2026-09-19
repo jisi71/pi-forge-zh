@@ -131,17 +131,28 @@ scripts/rollback.sh --yes        # 切回上游 pi-forge
 ## 三、跟进上游 / 跟进 pi SDK
 
 上游冻结了，所以「合并上游提交」这件事基本不会再有。剩下的是**跟进 pi SDK**：
-本 fork 锁 `0.84.3`，npm 上最新是 `0.85.1`。
+本 fork 锁 `0.85.1`（`ZH_SDK_VERSION`，见 `scripts/env.sh`）。
+
+查有没有新版：
+
+```bash
+npm view @earendil-works/pi-coding-agent version      # npm 上的 latest
+npm view @earendil-works/pi-coding-agent time --json | tail -20   # 各版本发布时间
+```
 
 ```bash
 cd src
-# 改 packages/server/package.json 里三个 @earendil-works/pi-* 为同一版本
+# 1. 改两处 package.json 里三个 @earendil-works/pi-* 为同一版本（根包 + packages/server）
+# 2. 把新版本号写进 scripts/env.sh 的 ZH_SDK_VERSION（validate.sh 会比对，不写会报错）
+# 3. 升版本号（3 个 package.json）+ 写 CHANGELOG 条目
 npm install
-npm run check && npm run build
-npm run test:ci -- --skip agent-tool-sandbox,git,orchestration,session-export
+npm run check && npm run build      # build 必须在跑测试之前：测试导入的是 dist/*
+npm run test:ci -- --skip git,orchestration,session-export
 npm run i18n:audit
 scripts/build.sh --fast && scripts/preview.sh
 # 预览里真的聊一句（要花钱，但 SDK 升级只有真跑才验得出来）
+# 想看模型目录的变化，就再拿上一个版本另起一份实例（不同端口）同时比：
+#   curl -s http://127.0.0.1:3200/api/v1/config/providers  vs  :3100
 scripts/install-zh.sh --yes
 ```
 
