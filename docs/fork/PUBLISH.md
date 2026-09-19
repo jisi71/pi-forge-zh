@@ -89,6 +89,30 @@ npm i -g https://github.com/jisi71/pi-forge-zh/releases/download/v1.5.4-zh.1/pi-
 
 这条路径验证过：安装后 `pi-forge-zh --version`、启动、`GET /` 200、版本号都对。
 
+### 建 Release 时必顶两个额外动作
+
+GitHub 会因为 tag 里的 `-zh.N` 后缀**自动把 release 标成 Pre-release**，而 GitHub 规定
+「Latest release cannot be draft or prerelease」—— 所以 **`--latest` 单独用是无效的**，必须分两步：
+
+```bash
+gh release create v1.5.4-zh.N build/pi-forge-zh-1.5.4-zh.N.tgz --title "v1.5.4-zh.N" --notes "…"
+gh release edit v1.5.4-zh.N --prerelease=false      # 先清掉自动加的预发布标记
+gh release edit v1.5.4-zh.N --latest                # 再标 latest
+```
+
+验证 **不要只看 `gh release list`，也不要只看终端输出**（造错信息很容易被 `tail -1` 吞掉）。
+权威判断是 API：
+
+```bash
+gh api repos/jisi71/pi-forge-zh/releases/latest -q .tag_name      # 应为最新 tag
+gh api repos/jisi71/pi-forge-zh/releases/tags/v1.5.4-zh.N -q .prerelease   # 应为 false
+curl -s -o /dev/null -w '%{http_code}\n' -L \
+  https://github.com/jisi71/pi-forge-zh/releases/download/v1.5.4-zh.N/pi-forge-zh-1.5.4-zh.N.tgz
+```
+
+为什么在意：GitHub Release 是**不依赖 registry** 的分发通道（上面那条 URL 安装），
+如果 latest 指向旧版，访客拿到的就是旧包。
+
 ## 一、发一版到 npm
 
 ```bash
