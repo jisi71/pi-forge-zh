@@ -15,6 +15,39 @@ section. See the "Versions" section of the README for the support window policy.
 
 ## [Unreleased]
 
+## [1.5.4-zh.3] — 2026-09-19
+
+Upgrades the pinned pi SDK trio to `0.85.1`, and fixes a macOS-only gap in the
+model-tool path policy that surfaced while verifying that upgrade.
+
+### Changed
+
+- Pinned pi SDK trio (`pi-coding-agent`, `pi-agent-core`, `pi-ai`) `0.84.3` →
+  `0.85.1`. All 38 SDK symbols pi-forge imports still exist, and the session file
+  format is still `SESSION_VERSION` 3 with identical JSONL record types, so
+  sessions remain interchangeable with the `pi` CLI. What a user notices is the
+  model catalog the pin carries: against the same remote catalog cache, `0.85.1`
+  lists 82 provider/model entries `0.84.3` does not (for example
+  `openai/gpt-6-astra-fast`, `claude-fable-5-1`, `gemini-3.8-flash`, `glm-5.3`)
+  and drops 72 older aliases (`gpt-5.2`, `claude-opus-4.5`, several `nvidia/…`
+  and OpenRouter `:batch` entries).
+- `scripts/validate.sh` now compares the SDK trio against a version declared in
+  `scripts/env.sh` rather than against the base tag, so the no-drift check still
+  fails on a quiet bump of any other dependency **and** on an SDK bump that was
+  not declared.
+
+### Fixed
+
+- Model tools could create protected pi config files (`auth.json`,
+  `models.json`, `settings.json`) on macOS. `realpathExistingOrParent()` resolved
+  a not-yet-existing path to its nearest existing ancestor and dropped the file
+  name, so the protected-file check saw the config directory itself, whose
+  relative path matched no protected name, and the path was allowed. Linux never
+  hit it because `/tmp` is not behind a symlink there. The non-existent tail is
+  now preserved.
+- `tests/test-agent-tool-sandbox.ts` runs to completion on macOS for the first
+  time, so it no longer has to be skipped in the local runbook.
+
 ## [1.5.4-zh.2] — 2026-09-16
 
 Docs-only release: the npm package page is the first thing a Chinese user sees,
