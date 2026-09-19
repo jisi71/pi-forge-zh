@@ -2,6 +2,9 @@
 
 上游 `pi-forge` 已归档，本 fork 自己发版。整条链路都在本仓库里，可重复执行。
 
+> 下面代码块里的 `#` 注释是 **bash** 写法。在 zsh 里 `#` 默认不是注释，整行会被当成命令
+> （报 `zsh: command not found: #`）—— 粘到终端时**只粘命令行、别粘注释行**，或用 bash 跑。
+
 ## 〇、先确认 registry：镜像站不能发布
 
 ```bash
@@ -23,6 +26,19 @@ npm 默认拒绝发布预发布版，除非显式给 dist-tag。`publishConfig` 
 
 `publishConfig.provenance` 显式设为 `false`：provenance 只有在 GitHub Actions 里用 OIDC
 发布才有意义，本地发布会静默跳过 —— 将来若给本 fork 加了 release workflow，再改回 `true`。
+
+### 先确认 token 还有效（会过期）
+
+`npm whoami --registry=https://registry.npmjs.org/` 打印 401 `token seems to be invalid`
+就说明 `~/.npmrc` 里那个 token 已失效 —— 此时 `npm publish` 会以 **E404** 的形式失败
+（npm 对写操作统一返回 404，不用 401/403，以免泄露包是否存在），很容易误判成「没有权限」：
+
+```
+npm error 404 Not Found - PUT https://registry.npmjs.org/pi-forge-zh - Not found
+```
+
+修法：`npm login --registry=https://registry.npmjs.org/` 重新登录（浏览器走完），
+然后 `npm whoami` 应打印用户名。**每次发版前先跑一次 whoami 当预检。**
 
 ### 发布需要两步验证（EOTP）—— 这一步必须走完
 
